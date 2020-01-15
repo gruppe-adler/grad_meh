@@ -1,0 +1,13 @@
+name = "Gruppe Adler MEH";
+author = "Gruppe Adler";
+picture = "Adler.paa";
+actionName = "Website";
+action = "https://www.gruppe-adler.de/";
+description = "Gruppe Adler MEH";
+logo = "Adler.paa";
+logoOver = "Adler.paa";
+tooltip = "Gruppe Adler MEH";
+overview = "";
+overviewPicture = "Adler.paa";
+overviewText = "";
+overviewFootnote = "";
