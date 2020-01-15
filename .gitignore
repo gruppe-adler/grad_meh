@@ -57,6 +57,7 @@ CTestTestfile.cmake
 .idea/
 
 # HEMTT directories
-releases/
-build_keys/
+releases/*
+keys/*
 *.pbo
+*.biprivatekey
