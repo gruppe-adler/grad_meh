@@ -1,5 +1,3 @@
-#include <algorithm>
-
 #include <intercept.hpp>
 
 // String
@@ -12,7 +10,12 @@
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 
+// Range TODO: replace with C++20 Range
+#include <boost/range/counting_range.hpp>
+
 #include <sstream>
+#include <algorithm>
+#include <execution>
 
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
@@ -26,7 +29,6 @@
 
 #ifdef _WIN32
 #include <Windows.h>
-#include <ppl.h>
 #else
 #error Only Windows is supported
 #endif // _WIN32
@@ -328,43 +330,46 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
         lcoPaths.reserve(rvmats.size());
 
         auto rvmatPbo = grad_aff::Pbo::Pbo(findPboPath(rvmats[0]).string());
+        rvmatPbo.readPbo(false);
 
         // Has to be not empty
         std::string lastValidRvMat = "1337";
         std::string fillerTile = "";
         std::string prefix = "s_";
 
-        for (auto& rvmatPath : rvmats) {
+        std::mutex rapMutex;
 
-            if (boost::istarts_with(((fs::path)rvmatPath).filename().string(), lastValidRvMat))
-                continue;
+        std::for_each(std::execution::par, rvmats.begin(), rvmats.end(), [&lastValidRvMat, &rvmatPbo, &fillerTile, prefix, &lcoPaths, &rapMutex](std::string& rvmatPath) {
+            if (!boost::istarts_with(((fs::path)rvmatPath).filename().string(), lastValidRvMat)) {
+                std::unique_lock<std::mutex> lock(rapMutex);
+                auto rap = grad_aff::Rap::Rap(rvmatPbo.getEntryData(rvmatPath));
+                lock.unlock();
+                rap.readRap();
+                
+                for (auto& entry : rap.classEntries) {
+                    if (entry->name == "Stage0") {
+                        auto rapClassPtr = std::static_pointer_cast<RapClass>(entry);
 
-            auto rap = grad_aff::Rap::Rap(rvmatPbo.getEntryData(rvmatPath));
-            rap.readRap();
-
-            for (auto& entry : rap.classEntries) {
-                if (entry->name == "Stage0") {
-                    auto rapClassPtr = std::static_pointer_cast<RapClass>(entry);
-
-                    for (auto& subEntry : rapClassPtr->classEntries) {
-                        if (subEntry->name == "texture") {
-                            auto textureStr = std::get<std::string>(std::static_pointer_cast<RapValue>(subEntry)->value);
-                            auto rvmatFilename = ((fs::path)textureStr).filename().string();
-                            if (!boost::istarts_with(rvmatFilename, prefix)) {
-                                if (fillerTile == "") {
-                                    fillerTile = textureStr;
+                        for (auto& subEntry : rapClassPtr->classEntries) {
+                            if (subEntry->name == "texture") {
+                                auto textureStr = std::get<std::string>(std::static_pointer_cast<RapValue>(subEntry)->value);
+                                auto rvmatFilename = ((fs::path)textureStr).filename().string();
+                                if (!boost::istarts_with(rvmatFilename, prefix)) {
+                                    if (fillerTile == "") {
+                                        fillerTile = textureStr;
+                                    }
                                 }
+                                else {
+                                    lcoPaths.push_back(textureStr);
+                                    lastValidRvMat = rvmatFilename.substr(0, 9);
+                                }
+                                break;
                             }
-                            else {
-                                lcoPaths.push_back(textureStr);
-                                lastValidRvMat = rvmatFilename.substr(0, 9);
-                            }
-                            break;
                         }
                     }
                 }
             }
-        }
+        });
 
         // Remove Duplicates
         std::sort(lcoPaths.begin(), lcoPaths.end());
@@ -383,9 +388,9 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
             ImageBuf src(ImageSpec(fillerPaa.mipMaps[0].height, fillerPaa.mipMaps[0].height, 4, TypeDesc::UINT8), fillerPaa.mipMaps[0].data.data());
 
             size_t noOfTiles = (worldSize / fillerPaa.mipMaps[0].height);
-            
-            //for (size_t i = 0; i < noOfTiles; i++) {
-            concurrency::parallel_for(size_t(0), noOfTiles, [&](size_t i) {
+
+            auto cr = boost::counting_range(size_t(0), noOfTiles);
+            std::for_each(std::execution::par_unseq, cr.begin(), cr.end(), [noOfTiles, &dst, fillerPaa, src] (size_t i) {
                 for (size_t j = 0; j < noOfTiles; j++) {
                     ImageBufAlgo::paste(dst, (i * fillerPaa.mipMaps[0].height), (j * fillerPaa.mipMaps[0].height), 0, 0, src);
                 }
@@ -418,8 +423,8 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
 
         size_t tileSize = worldSize / 4;
 
-        concurrency::parallel_for(size_t(0), size_t(4), [&](size_t i) {
-            //for (int32_t i = 0; i < 4; i++) {
+        auto cr = boost::counting_range(0, 4);
+        std::for_each(std::execution::par_unseq, cr.begin(), cr.end(), [basePathSat, dst, tileSize] (int i) {
             auto curWritePath = basePathSat / std::to_string(i);
             if (!fs::exists(curWritePath)) {
                 fs::create_directories(curWritePath);
