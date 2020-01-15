@@ -1,0 +1,13 @@
+name = "grad_meh"
+prefix = "grad_meh"
+author = "Gruppe Adler"
+folder_optionals = false
+files = [
+    "mod.cpp",
+    "Adler.paa",
+    "LICENSE",
+    "README.md",
+    "*.dll"
+]
+key_name = "{{prefix}}-{{version}}"
+sig_name = "{{prefix}}-{{version}}"
