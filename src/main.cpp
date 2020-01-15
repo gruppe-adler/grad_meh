@@ -239,26 +239,31 @@ void writeMeta(const std::string& worldName, std::filesystem::path& basePath)
 
 void writeDem(std::filesystem::path& basePath, grad_aff::Wrp& wrp, const int32_t& worldSize)
 {
-    std::ofstream outFile;
-    outFile.open(basePath / "dem.asc", std::ios::out | std::ios::trunc);
-
-    outFile << "ncols " << wrp.mapSizeX << std::endl;
-    outFile << "nrows " << wrp.mapSizeY << std::endl;
-    outFile << "xllcorner " << 0.0 << std::endl;
-    outFile << "yllcorner " << 0.0 << std::endl;
-    outFile << "cellsize " << (worldSize / wrp.mapSizeX) << std::endl; // worldSize / mapsizex
-    outFile << "NODATA_value " << -9999;
+    std::stringstream demStringStream;
+    demStringStream << "ncols " << wrp.mapSizeX << std::endl;
+    demStringStream << "nrows " << wrp.mapSizeY << std::endl;
+    demStringStream << "xllcorner " << 0.0 << std::endl;
+    demStringStream << "yllcorner " << 0.0 << std::endl;
+    demStringStream << "cellsize " << (worldSize / wrp.mapSizeX) << std::endl; // worldSize / mapsizex
+    demStringStream << "NODATA_value " << -9999;
 
     int64_t c = 0;
     for (int64_t i = wrp.elevation.size() - 1; i > 0; i--) {
         if ((c % wrp.mapSizeX) == 0) {
-            outFile << std::endl;
+            demStringStream << std::endl;
         }
-        outFile << wrp.elevation[i] << " ";
+        demStringStream << wrp.elevation[i] << " ";
         c++;
     }
-    outFile << std::endl;
-    outFile.close();
+    demStringStream << std::endl;
+
+    bi::filtering_istream fis;
+    fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_compression)));
+    fis.push(demStringStream);
+
+    std::ofstream demOut(basePath / "dem.asc.gz", std::ios::binary);
+    bi::copy(fis, demOut);
+    demOut.close();
 }
 
 void writePreviewImage(const std::string& worldName, std::filesystem::path& basePath)
@@ -339,11 +344,9 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
 
         std::mutex rapMutex;
 
-        std::for_each(std::execution::par, rvmats.begin(), rvmats.end(), [&lastValidRvMat, &rvmatPbo, &fillerTile, prefix, &lcoPaths, &rapMutex](std::string& rvmatPath) {
+        for(auto& rvmatPath : rvmats) {
             if (!boost::istarts_with(((fs::path)rvmatPath).filename().string(), lastValidRvMat)) {
-                std::unique_lock<std::mutex> lock(rapMutex);
                 auto rap = grad_aff::Rap::Rap(rvmatPbo.getEntryData(rvmatPath));
-                lock.unlock();
                 rap.readRap();
                 
                 for (auto& entry : rap.classEntries) {
@@ -369,7 +372,7 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
                     }
                 }
             }
-        });
+        }
 
         // Remove Duplicates
         std::sort(lcoPaths.begin(), lcoPaths.end());
