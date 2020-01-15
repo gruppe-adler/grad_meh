@@ -1,22 +1,22 @@
+#include "script_component.hpp"
+
 class CfgPatches {
-	class grad_meh { //Change this
-		name = "Gruppe Adler Map Exporter"; //Change this
+	class grad_meh {
+		name = "Gruppe Adler Map Exporter";
 		units[] = {};
 		weapons[] = {};
 		requiredVersion = 1.92;
-		requiredAddons[] = {"intercept_core"};
-		author = "Willard"; //Change this
-		authors[] = {"Willard"}; //Change this
-		url = ""; //Change this
-		version = "1.0";
-		versionStr = "1.0";
-		versionAr[] = {1,0};
+		requiredAddons[] = { "intercept_core" };
+		authors[] = { "Willard", "DerZade" };
+		url = "";
+		VERSION_CONFIG;
 	};
 };
+
 class Intercept {
-    class Willard { //Change this. It's either the name of your project if you have more than one plugin. Or just your name.
-        class grad_meh { //Change this.
-            pluginName = "grad_meh"; //Change this.
+    class Willard {
+        class grad_meh {
+            pluginName = "grad_meh";
         };
     };
 };
