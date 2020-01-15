@@ -14,7 +14,7 @@ class CfgPatches {
 };
 
 class Intercept {
-    class Willard {
+    class grad {
         class grad_meh {
             pluginName = "grad_meh";
         };
