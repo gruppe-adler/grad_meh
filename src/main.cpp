@@ -511,7 +511,7 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
 
 void intercept::pre_start() {
     static auto grad_meh_export_map =
-        client::host::register_sqf_command("gradMeExportMap", "Exports the given map", exportMapCommand, game_data_type::BOOL, game_data_type::STRING);
+        client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::BOOL, game_data_type::STRING);
 }
 
 void intercept::pre_init() {
