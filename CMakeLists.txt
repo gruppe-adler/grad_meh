@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.6)
 #----Make changes here
 
 #This is your project name. And also the filename of the resulting plugin.
-project (grad_me)
+project (grad_meh)
 
 #This setting enables the use of the engine string type instead of converting to std::string.
 #Enabling this results in better performance when handling strings to SQF commands.

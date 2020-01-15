@@ -31,7 +31,7 @@
 #error Only Windows is supported
 #endif // _WIN32
 
-#define GRAD_ME_VERSION 0.1
+#define GRAD_MEH_VERSION 0.1
 
 using namespace intercept;
 using namespace OpenImageIO_v2_1;
@@ -134,7 +134,7 @@ void populateMap() {
         catch (std::exception &ex) {
             client::invoker_lock threadLock;
             std::stringstream errorStream;
-            errorStream << "[grad_me] Couldn't open PBO: " << p.string() << " error msg: " << ex.what();
+            errorStream << "[grad_meh] Couldn't open PBO: " << p.string() << " error msg: " << ex.what();
             sqf::diag_log(errorStream.str());
             threadLock.unlock();
         }
@@ -176,7 +176,7 @@ void writeMeta(const std::string& worldName, std::filesystem::path& basePath)
     client::invoker_lock threadLock;
     auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
     nl::json meta;
-    meta["version"] = GRAD_ME_VERSION;
+    meta["version"] = GRAD_MEH_VERSION;
     meta["worldName"] = sqf::world_name();
     meta["worldSize"] = sqf::world_size();
     meta["displayName"] = sqf::get_text(mapConfig >> "description");
@@ -435,9 +435,9 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
 
 void extractMap(const std::string& worldName, const std::string& worldPath, const int32_t& worldSize) {
 
-    auto basePath = fs::path("grad_me") / worldName;
-    auto basePathGeojson = fs::path("grad_me") / worldName / "geojson";
-    auto basePathSat = fs::path("grad_me") / worldName / "sat";
+    auto basePath = fs::path("grad_meh") / worldName;
+    auto basePathGeojson = fs::path("grad_meh") / worldName / "geojson";
+    auto basePathSat = fs::path("grad_meh") / worldName / "sat";
 
     if (!fs::exists(basePath)) {
         fs::create_directories(basePath);
@@ -510,10 +510,10 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
 }
 
 void intercept::pre_start() {
-    static auto grad_me_export_map =
-        client::host::register_sqf_command("gradMeExportMap", "Exports the given map", exportMapCommand, game_data_type::BOOL, game_data_type::STRING);
+    static auto grad_meh_export_map =
+        client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::BOOL, game_data_type::STRING);
 }
 
 void intercept::pre_init() {
-    intercept::sqf::system_chat("The grad_me plugin is running!");
+    intercept::sqf::system_chat("The grad_meh plugin is running!");
 }
