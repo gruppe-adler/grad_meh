@@ -164,8 +164,7 @@ fs::path findPboPath(std::string path) {
 
     for (auto const& [key, val] : entryPboMap)
     {
-        if (boost::starts_with(ba::to_lower_copy(path), ba::to_lower_copy(key)) &&
-            key.length() > matchLength) {
+        if (boost::istarts_with(path, key) && key.length() > matchLength) {
             retPath = val;
         }
     }
@@ -518,8 +517,11 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
         return false;
     }
 
+    std::string worldPath = sqf::get_text(configWorld >> "worldName");
     // removes leading /
-    std::string worldPath = sqf::get_text(configWorld >> "worldName").substr(1);
+    if (boost::starts_with(worldPath, "\\")) {
+        worldPath = worldPath.substr(1);
+    }
 
     std::thread readWrpThread(extractMap, worldName, worldPath, worldSize);
     readWrpThread.detach();
