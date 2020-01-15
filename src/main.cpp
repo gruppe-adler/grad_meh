@@ -27,8 +27,11 @@
 #include <grad_aff/pbo/pbo.h>
 #include <grad_aff/rap/rap.h>
 
+#include "findPbos.h"
+
 #ifdef _WIN32
 #include <Windows.h>
+#include <codecvt>
 #else
 #error Only Windows is supported
 #endif // _WIN32
@@ -108,17 +111,23 @@ std::vector<fs::path> getAddonsPaths() {
     Returns full paths to every *.pbo from mod Paths + A3 Root
 */
 std::vector<fs::path> getFullPboPaths() {
-    std::vector<fs::path> pboPaths = {};
-    auto ext(".pbo");
-    for (auto& modPaths : getAddonsPaths()) {
-        for (auto& p : fs::recursive_directory_iterator(modPaths))
-        {
-            if (p.path().extension() == ext) {
-                std::cout << p << '\n';
-                pboPaths.push_back(p);
-            }
-        }
+    std::vector<std::string> pboList;
+
+#ifdef _WIN32
+    for (auto& pboW : generate_pbo_list()) {
+        pboList.push_back(std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes(pboW).substr(4));
     }
+#else
+    pboList = generate_pbo_list();
+#endif
+
+    std::vector<fs::path> pboPaths;
+    pboPaths.reserve(pboList.size());
+
+    for (auto& pboPath : pboList) {
+        pboPaths.push_back((fs::path)pboPath);
+    }
+
     return pboPaths;
 }
 
