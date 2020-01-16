@@ -9,7 +9,7 @@ jobs:
     - name: 'Checkout source code'
       uses: actions/checkout@master
     - name: 'Build Mod with HEMTT'
-      uses: gruppe-adler/action-release-with-hemtt@1.0
+      uses: gruppe-adler/action-release-with-hemtt@1.1.2
       id: build
     - name: 'Upload artifact'
       uses: actions/upload-artifact@master
