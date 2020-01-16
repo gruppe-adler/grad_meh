@@ -127,7 +127,11 @@ std::vector<fs::path> getFullPboPaths() {
     pboPaths.reserve(pboList.size());
 
     for (auto& pboPath : pboList) {
-        pboPaths.push_back((fs::path)pboPath);
+        auto path = (fs::path)pboPath;
+        std::string ext(".pbo");
+        if (path.has_extension() && path.extension() == ext) {
+            pboPaths.push_back(path);
+        }
     }
 
     return pboPaths;
@@ -329,7 +333,7 @@ void writeHouseGeojson(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojso
     houseOut.close();
 }
 
-void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesystem::path& basePathSat)
+void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesystem::path& basePathSat, const std::string& worldName)
 {
     std::vector<std::string> rvmats = {};
     for (auto& rv : wrp.rvmats) {
@@ -390,6 +394,11 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
         lcoPaths.erase(last, lcoPaths.end());
 
         auto layerCellSize = (int32_t)wrp.layerCellSize;
+
+        if (boost::iequals(worldName, "Takistan") || boost::iequals(worldName, "Mountains_ACR")) {
+            layerCellSize = 112;
+        }
+
         ImageBuf dst(ImageSpec(worldSize, worldSize, 4, TypeDesc::UINT8));
 
         if (fillerTile != "") {
@@ -492,7 +501,7 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
     }
 
     if(steps[0])
-        writeSatImages(wrp, worldSize, basePathSat);
+        writeSatImages(wrp, worldSize, basePathSat, worldName);
 
     if(steps[1])
         writeHouseGeojson(wrp, basePathGeojson);
