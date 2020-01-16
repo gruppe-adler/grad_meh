@@ -16,6 +16,7 @@
 #include <sstream>
 #include <algorithm>
 #include <execution>
+#include <array>
 
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
@@ -45,6 +46,7 @@ namespace fs = std::filesystem;
 namespace nl = nlohmann;
 namespace ba = boost::algorithm;
 namespace bi = boost::iostreams;
+using iet = types::game_state::game_evaluator::evaluator_error_type;
 
 using SQFPar = game_value_parameter;
 
@@ -387,7 +389,7 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
         auto last = std::unique(lcoPaths.begin(), lcoPaths.end());
         lcoPaths.erase(last, lcoPaths.end());
 
-        int32_t layerCellSize = wrp.layerCellSize;
+        auto layerCellSize = (int32_t)wrp.layerCellSize;
         ImageBuf dst(ImageSpec(worldSize, worldSize, 4, TypeDesc::UINT8));
 
         if (fillerTile != "") {
@@ -449,7 +451,7 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
     }
 }
 
-void extractMap(const std::string& worldName, const std::string& worldPath, const int32_t& worldSize) {
+void extractMap(const std::string& worldName, const std::string& worldPath, const int32_t& worldSize, std::array<bool, 5>& steps) {
 
     auto basePath = fs::path("grad_meh") / worldName;
     auto basePathGeojson = fs::path("grad_meh") / worldName / "geojson";
@@ -478,7 +480,8 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
     auto wrp = grad_aff::Wrp(wrpPbo.getEntryData(worldPath));
     wrp.wrpName = worldName + ".wrp";
     try {
-        wrp.readWrp();
+        if(steps[0] || steps[1] || steps[5])
+            wrp.readWrp();
         //reportStatus(worldName, "read_wrp", "done");
     }
     catch (std::exception & ex) { // most likely caused by unknown mapinfo type
@@ -488,49 +491,96 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
         return;
     }
 
-    writeSatImages(wrp, worldSize, basePathSat);
-    writeHouseGeojson(wrp, basePathGeojson);
-    writePreviewImage(worldName, basePath);
-    writeMeta(worldName, basePath);
-    writeDem(basePath, wrp, worldSize);
+    if(steps[0])
+        writeSatImages(wrp, worldSize, basePathSat);
+
+    if(steps[1])
+        writeHouseGeojson(wrp, basePathGeojson);
+    
+    if (steps[2])
+        writePreviewImage(worldName, basePath);
+    
+    if (steps[3])
+        writeMeta(worldName, basePath);
+    
+    if (steps[4])
+        writeDem(basePath, wrp, worldSize);
 }
 
 game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
 
-    if (rightArg.type_enum() != game_data_type::STRING) {
-        gs.set_script_error(types::game_state::game_evaluator::evaluator_error_type::assertion_failed, "Expected a string!"sv);
+
+    std::string worldName;
+
+    // [sat image, houses, preview img, meta.json, dem.asc]
+    std::array<bool, 5> steps = { true, true, true, true, true };
+
+    if (rightArg.type_enum() == game_data_type::STRING) {
+        worldName = r_string(rightArg).c_str();
+    }
+    else if (rightArg.type_enum() == game_data_type::ARRAY) {
+        auto parArray = rightArg.to_array();
+        
+        if (parArray.size() <= 0 || parArray.size() >= 7) {
+            gs.set_script_error(iet::assertion_failed, "Wrong amount of arguments!"sv);
+            return false;
+        }
+
+        if (parArray[0].type_enum() == game_data_type::STRING) {
+
+            worldName = r_string(parArray[0]);
+
+            for (int i = 1; i < parArray.size(); i++) {
+                if (parArray[i].type_enum() == game_data_type::BOOL) {
+                    auto b = (bool)parArray[i];
+                    steps[i - 1] = b;
+                }
+                else {
+                    gs.set_script_error(iet::assertion_failed, types::r_string("Expected bool at index ").append(std::to_string(i)).append("!"));
+                    return false;
+                }
+            }
+        }
+        else {
+            gs.set_script_error(iet::assertion_failed, "First element in the parameter array has to be a string!"sv);
+            return false;
+        }
+
+    }
+    else {
+        gs.set_script_error(iet::assertion_failed, "Expected a string or an array!"sv);
         return false;
     }
 
-    std::string worldName = r_string(rightArg).c_str();
-
     auto configWorld = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
     if (sqf::config_name(configWorld) != worldName) {
-        gs.set_script_error(types::game_state::game_evaluator::evaluator_error_type::assertion_failed, "Couldn't find the specified world!"sv);
+        gs.set_script_error(iet::assertion_failed, "Couldn't find the specified world!"sv);
         return false;
     }
 
     // Filters out maps like CAWorld
     auto worldSize = (int32_t)sqf::get_number(configWorld >> "mapSize");
     if (worldSize == 0) {
-        gs.set_script_error(types::game_state::game_evaluator::evaluator_error_type::assertion_failed, "Invalid world!"sv);
+        gs.set_script_error(iet::assertion_failed, "Invalid world!"sv);
         return false;
     }
 
+    // check for leading /
     std::string worldPath = sqf::get_text(configWorld >> "worldName");
-    // removes leading /
     if (boost::starts_with(worldPath, "\\")) {
         worldPath = worldPath.substr(1);
     }
 
-    std::thread readWrpThread(extractMap, worldName, worldPath, worldSize);
+    std::thread readWrpThread(extractMap, worldName, worldPath, worldSize, steps);
     readWrpThread.detach();
     return true;
 }
 
 void intercept::pre_start() {
-    static auto grad_meh_export_map =
+    static auto grad_meh_export_map_string =
         client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::BOOL, game_data_type::STRING);
+    static auto grad_meh_export_map_array =
+        client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::BOOL, game_data_type::ARRAY);
 }
 
 void intercept::pre_init() {
