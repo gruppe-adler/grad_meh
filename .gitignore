@@ -55,3 +55,9 @@ CTestTestfile.cmake
 
 # JetBrains
 .idea/
+
+# HEMTT directories
+releases/*
+keys/*
+*.pbo
+*.biprivatekey
