@@ -64,11 +64,17 @@ private _allDone = true;
 		if (_status isEqualTo "done") then {
 			(_stepCtrl controlsGroupCtrl IDC_LOADINGSTEP_PICTURE) ctrlSetText DONE_TEXTURE;
 			(_stepCtrl controlsGroupCtrl IDC_LOADINGSTEP_TEXT) ctrlSetTextColor [0.4, 0.667, 0.4, 1];
-		} else {
-			_allDone = false;
 		};
 		if (_status isEqualTo "running") then {
 			[_stepCtrl] spawn _runningAnim;
+		};
+		if (_status isEqualTo "canceled") then {
+			(_stepCtrl controlsGroupCtrl IDC_LOADINGSTEP_PICTURE) ctrlSetText DONE_TEXTURE;
+			(_stepCtrl controlsGroupCtrl IDC_LOADINGSTEP_PICTURE) ctrlSetTextColor [1, 1, 1, 0.5];
+			(_stepCtrl controlsGroupCtrl IDC_LOADINGSTEP_TEXT) ctrlSetTextColor [1, 1, 1, 0.5];
+		};
+		if !(_status in ["canceled", "done"]) then {
+			_allDone = false;
 		};
 	};
 } forEach _STEPS;
