@@ -11,7 +11,7 @@
  * NONE
  *
  * Example:
- * ["Altis", "writeSatImages", true] call grad_meh_fnc_updateProgress;
+ * ["Altis", "writeSatImages", "done"] call grad_meh_fnc_updateProgress;
  *
  * Public: No
  */

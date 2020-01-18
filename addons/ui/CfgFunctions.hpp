@@ -4,6 +4,8 @@ class CfgFunctions {
 			file = "\x\grad_meh\addons\ui\functions";
 			class createLoadingItem {};
 			class createMapItem {};
+			class export {};
+			class getSelectedMaps {};
 			class onKeyDown {};
 			class onLoad {};
 			class onLoadMainMenu {};
