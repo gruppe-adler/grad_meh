@@ -15,11 +15,10 @@
  * Public: No
  */
 
-params ["_parentDisplay", "_maps", "_exportSat", "_exportHouses", "_exportPreviewImg", "_exportMeta", "_exportDem"]
+params ["_parentDisplay", "_maps", "_exportSat", "_exportHouses", "_exportPreviewImg", "_exportMeta", "_exportDem"];
 
 // reset progess
 uiNamespace setVariable ["grad_meh_progress", []];
-
 
 private _cancelSteps = {
 	params ["_step", "_maps"];
