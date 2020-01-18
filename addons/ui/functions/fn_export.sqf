@@ -15,7 +15,15 @@
  * Public: No
  */
 
-params ["_parentDisplay", "_maps", "_exportSat", "_exportHouses", "_exportPreviewImg", "_exportMeta", "_exportDem"];
+params [
+	["_parentDisplay", displayNull, [displayNull]],
+	["_maps", [], []],
+	["_exportSat", true, [true]],
+	["_exportHouses", true, [true]],
+	["_exportPreviewImg", true, [true]],
+	["_exportMeta", true, [true]],
+	["_exportDem", true, [true]]
+];
 
 // reset progess
 uiNamespace setVariable ["grad_meh_progress", []];
