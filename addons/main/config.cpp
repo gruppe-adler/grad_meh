@@ -1,7 +1,7 @@
 #include "script_component.hpp"
 
 class CfgPatches {
-	class grad_meh {
+	class grad_meh_main {
 		name = "Gruppe Adler Map Exporter";
 		units[] = {};
 		weapons[] = {};
