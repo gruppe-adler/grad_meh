@@ -50,63 +50,12 @@ using iet = types::game_state::game_evaluator::evaluator_error_type;
 
 using SQFPar = game_value_parameter;
 
-std::map<std::string, fs::path> entryPboMap = {};
+static std::map<std::string, fs::path> entryPboMap = {};
+
+static bool gradMehIsRunning = false;
 
 int intercept::api_version() { //This is required for the plugin to work.
     return INTERCEPT_SDK_API_VERSION;
-}
-
-/*
-    Returns all mod Paths including the A3 Root Path
-*/
-std::vector<fs::path> getAddonsPaths() {
-    // is there a better way?
-    client::invoker_lock threadLock;
-    auto cmdLineArray = sqf::call(sqf::compile("gaclaGetCmdLineArray")).to_array();
-    threadLock.unlock();
-    std::vector<fs::path> retPaths;
-
-    // Get a3 Path
-    fs::path a3Path;  
-    TCHAR filename[MAX_PATH];
-    GetModuleFileName(NULL, filename, MAX_PATH);
-    a3Path = ((fs::path)filename).remove_filename();
-
-    // Collect Paths from "-mod"
-    for (auto &argPair : cmdLineArray) {
-        std::string arg(argPair[0].get_as<game_data_string>()->to_string());
-        boost::replace_all(arg, "\"", "");
-
-        if (boost::iequals(arg, "mod")) {
-            std::string par(argPair[1].get_as<game_data_string>()->to_string());
-            boost::replace_all(par, "\"", "");
-            if (par.find(";") != std::string::npos) {
-                std::vector<std::string> splitted;
-                boost::split(splitted, par, boost::is_any_of(";"));
-                splitted.erase(std::remove_if(splitted.begin(),
-                    splitted.end(),
-                    [](std::string x) { return x.empty(); }),
-                    splitted.end());
-                retPaths.insert(retPaths.end(), splitted.begin(), splitted.end());
-            }
-            else {
-                retPaths.push_back(par);
-            }
-
-        }
-    }
-
-    for (auto& pboPath : retPaths) {
-        if (boost::starts_with(pboPath.string(), "@")) {
-            pboPath = a3Path / pboPath;
-        }
-        else if (boost::iequals(pboPath.string(), "GM")) {
-            pboPath = a3Path / pboPath;
-        }
-    }
-    retPaths.push_back(a3Path);
-
-    return retPaths;
 }
 
 /*
@@ -489,8 +438,11 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
     auto wrp = grad_aff::Wrp(wrpPbo.getEntryData(worldPath));
     wrp.wrpName = worldName + ".wrp";
     try {
-        if(steps[0] || steps[1] || steps[5])
+        if (steps[0] || steps[1] || steps[5]) {
+            reportStatus(worldName, "read_wrp", "running");
             wrp.readWrp();
+            reportStatus(worldName, "read_wrp", "done");
+        }
         //reportStatus(worldName, "read_wrp", "done");
     }
     catch (std::exception & ex) { // most likely caused by unknown mapinfo type
@@ -500,20 +452,37 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
         return;
     }
 
-    if(steps[0])
+    if (steps[0]) {
+        reportStatus(worldName, "write_sat", "running");
         writeSatImages(wrp, worldSize, basePathSat, worldName);
-
-    if(steps[1])
+        reportStatus(worldName, "write_sat", "done");
+    }
+    if (steps[1]) {
+        reportStatus(worldName, "write_houses", "running");
         writeHouseGeojson(wrp, basePathGeojson);
+        reportStatus(worldName, "write_houses", "done");
+    }
     
-    if (steps[2])
+    if (steps[2]) {
+        reportStatus(worldName, "write_preview", "running");
         writePreviewImage(worldName, basePath);
+        reportStatus(worldName, "write_preview", "done");
+    }
     
-    if (steps[3])
+    if (steps[3]) {
+        reportStatus(worldName, "write_meta", "running");
         writeMeta(worldName, basePath);
+        reportStatus(worldName, "write_meta", "done");
+    }
     
-    if (steps[4])
+    if (steps[4]) {
+        reportStatus(worldName, "write_dem", "running");
         writeDem(basePath, wrp, worldSize);
+        reportStatus(worldName, "write_dem", "done");
+    }
+
+    gradMehIsRunning = false;
+    return;
 }
 
 game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
@@ -580,9 +549,16 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
         worldPath = worldPath.substr(1);
     }
 
-    std::thread readWrpThread(extractMap, worldName, worldPath, worldSize, steps);
-    readWrpThread.detach();
-    return true;
+    if (!gradMehIsRunning) {
+        gradMehIsRunning = true;
+        std::thread readWrpThread(extractMap, worldName, worldPath, worldSize, steps);
+        readWrpThread.detach();
+        return true;
+    }
+    else {
+        sqf::diag_log("gradMeh is already running! Aborting!");
+        return false;
+    }
 }
 
 void intercept::pre_start() {
