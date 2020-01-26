@@ -443,7 +443,6 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
             wrp.readWrp();
             reportStatus(worldName, "read_wrp", "done");
         }
-        //reportStatus(worldName, "read_wrp", "done");
     }
     catch (std::exception & ex) { // most likely caused by unknown mapinfo type
         client::invoker_lock threadLock;
