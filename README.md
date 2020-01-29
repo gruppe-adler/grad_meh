@@ -21,20 +21,7 @@ Download the latest version of the mod from our [releases page](https://github.c
 ## Output
 All exported files can be found in the `grad_meh` subdirectory of your Arma 3 installation directory.  
   
-Each map has its own subdirectory which has the following structure:
-![](./docs/output_dir_structure.svg)
-
-### `geojson` directory
-// TODO
-### `meta.json`
-// TODO
-### `sat` directory
-// TODO
-### `dem.asc`
-// TODO
-### `preview.png`
-The preview image of the map as a png. This is the same image as the one shown in the map selection of the editor.
-
+Each map has its own subdirectory, which structure is further explained [here](./docs/output_spec.md).
 
 ## Scripting API
 Gruppe Adler Map Exporter adds a script command, which is used by the UI. If you want to, you could use that scripting command for your own purposes.
