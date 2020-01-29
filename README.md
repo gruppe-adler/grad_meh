@@ -16,7 +16,7 @@ Download the latest version of the mod from our [releases page](https://github.c
 ## Limitations
 - To reduce complexity we only allow one export process at a time.
 - To reduce complexity it is not possible to stop a running export reliably, except by killing the game.
-- MEH cannot export any DLC maps, because we cannot get to the map files.
+- MEH cannot export maps included in `.ebo` files, because those are encrypted therefore we cannot get to the map files. 
 
 ## Output
 All exported files can be found in the `grad_meh` subdirectory of your Arma 3 installation directory.  
