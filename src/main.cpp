@@ -92,8 +92,6 @@ std::vector<fs::path> getFullPboPaths() {
 void populateMap() {
     for (auto& p : getFullPboPaths()) {
         auto pbo = grad_aff::Pbo::Pbo(p.string());
-        auto pboName = p;
-        pbo.setPboName(pboName.filename().replace_extension("").string());
         try {
             pbo.readPbo(false);
         }
@@ -136,14 +134,14 @@ void reportStatus(std::string worldName, std::string method, std::string report)
     sqf::call(updateCode, auto_array<game_value> {worldName, method, report});
 }
 
-void writeMeta(const std::string& worldName, std::filesystem::path& basePath)
+void writeMeta(const std::string& worldName, const int32_t& worldSize, std::filesystem::path& basePath)
 {
     client::invoker_lock threadLock;
     auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
     nl::json meta;
     meta["version"] = GRAD_MEH_VERSION;
-    meta["worldName"] = sqf::world_name();
-    meta["worldSize"] = sqf::world_size();
+    meta["worldName"] = worldName;
+    meta["worldSize"] = worldSize;
     meta["displayName"] = sqf::get_text(mapConfig >> "description");
     meta["elevationOffset"] = sqf::get_number(mapConfig >> "elevationOffset");
     meta["latitude"] = sqf::get_number(mapConfig >> "latitude");
@@ -242,7 +240,6 @@ void writePreviewImage(const std::string& worldName, std::filesystem::path& base
     auto paa = grad_aff::Paa(prewviewPbo.getEntryData(picturePath));
     paa.readPaa();
     paa.writeImage((basePath / "preview.png").string());
-    threadLock.lock();
 }
 
 void writeHouseGeojson(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
@@ -304,8 +301,6 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
         std::string lastValidRvMat = "1337";
         std::string fillerTile = "";
         std::string prefix = "s_";
-
-        std::mutex rapMutex;
 
         for(auto& rvmatPath : rvmats) {
             if (!boost::istarts_with(((fs::path)rvmatPath).filename().string(), lastValidRvMat)) {
@@ -438,7 +433,7 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
     auto wrp = grad_aff::Wrp(wrpPbo.getEntryData(worldPath));
     wrp.wrpName = worldName + ".wrp";
     try {
-        if (steps[0] || steps[1] || steps[5]) {
+        if (steps[0] || steps[1] || steps[4]) {
             reportStatus(worldName, "read_wrp", "running");
             wrp.readWrp();
             reportStatus(worldName, "read_wrp", "done");
@@ -470,7 +465,7 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
     
     if (steps[3]) {
         reportStatus(worldName, "write_meta", "running");
-        writeMeta(worldName, basePath);
+        writeMeta(worldName, worldSize, basePath);
         reportStatus(worldName, "write_meta", "done");
     }
     
