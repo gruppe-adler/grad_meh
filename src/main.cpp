@@ -33,8 +33,6 @@
 #ifdef _WIN32
 #include <Windows.h>
 #include <codecvt>
-#else
-#error Only Windows is supported
 #endif // _WIN32
 
 #define GRAD_MEH_VERSION 0.1
@@ -166,31 +164,6 @@ void writeMeta(const std::string& worldName, const int32_t& worldSize, std::file
     }
 
     meta["grids"] = gridArray;
-
-    auto locationArray = nl::json::array();
-
-    for (auto& location : sqf::config_classes("true", (mapConfig >> "Names"))) {
-        auto locationEntry = sqf::config_entry(location);
-
-        nl::json entryGrid;
-        entryGrid["type"] = sqf::get_text(locationEntry >> "type");
-
-        auto posArray = nl::json::array();
-        auto posArr = sqf::get_array(locationEntry >> "position");
-        for (auto& pos : posArr.to_array()) {
-            posArray.push_back((float_t)pos);
-        }
-        entryGrid["position"] = posArray;
-
-        entryGrid["name"] = sqf::get_text(locationEntry >> "name");
-        entryGrid["radiusA"] = (int32_t)sqf::get_number(locationEntry >> "radiusA");
-        entryGrid["radiusB"] = (int32_t)sqf::get_number(locationEntry >> "radiusB");
-        entryGrid["angle"] = (int32_t)sqf::get_number(locationEntry >> "angle");
-
-        locationArray.push_back(entryGrid);
-    }
-
-    meta["locations"] = locationArray;
     threadLock.unlock();
 
     std::ofstream out(basePath / "meta.json");
@@ -242,7 +215,66 @@ void writePreviewImage(const std::string& worldName, std::filesystem::path& base
     paa.writeImage((basePath / "preview.png").string());
 }
 
-void writeHouseGeojson(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
+void writeLocations(const std::string& worldName, std::filesystem::path& basePathGeojson)
+{
+    client::invoker_lock threadLock;
+    auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
+
+    std::map<std::string, std::shared_ptr<nl::json>> locationMap = {};
+
+    auto locationArray = nl::json::array();
+
+    for (auto& location : sqf::config_classes("true", (mapConfig >> "Names"))) {
+        auto locationEntry = sqf::config_entry(location);
+        auto type = sqf::get_text(locationEntry >> "type");
+
+        auto kvp = locationMap.find(type);
+        if (kvp == locationMap.end()) {
+            kvp = locationMap.insert({ type, std::make_shared<nl::json>() }).first;
+        }
+
+        auto pointFeature = nl::json();
+        pointFeature["type"] = "Feature";
+
+        auto geometry = nl::json();
+        geometry["type"] = "Point";
+
+        auto posArray = nl::json::array();
+        auto posArr = sqf::get_array(locationEntry >> "position");
+        for (auto& pos : posArr.to_array()) {
+            posArray.push_back((float_t)pos);
+        }
+        geometry["coordinates"] = posArray;
+
+        pointFeature["geometry"] = geometry;
+
+        auto properties = nl::json();
+        properties["name"] = sqf::get_text(locationEntry >> "name");
+        properties["radiusA"] = (int32_t)sqf::get_number(locationEntry >> "radiusA");
+        properties["radiusB"] = (int32_t)sqf::get_number(locationEntry >> "radiusB");
+        properties["angle"] = (int32_t)sqf::get_number(locationEntry >> "angle");
+
+        pointFeature["properties"] = properties;
+
+        kvp->second->push_back(pointFeature);
+    }
+
+    threadLock.unlock();
+    for (auto& pair : locationMap) {
+        std::stringstream houseInStream;
+        houseInStream << std::setw(4) << *pair.second;
+
+        bi::filtering_istream fis;
+        fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_compression)));
+        fis.push(houseInStream);
+
+        std::ofstream houseOut(basePathGeojson / (pair.first + std::string(".geojson.gz")), std::ios::binary);
+        bi::copy(fis, houseOut);
+        houseOut.close();
+    }
+}
+
+void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
 {
     nl::json house = nl::json::array();
 
@@ -277,6 +309,12 @@ void writeHouseGeojson(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojso
     std::ofstream houseOut(basePathGeojson / "house.geojson.gz", std::ios::binary);
     bi::copy(fis, houseOut);
     houseOut.close();
+}
+
+void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName)
+{
+    writeHouses(wrp, basePathGeojson);
+    writeLocations(worldName, basePathGeojson);
 }
 
 void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesystem::path& basePathSat, const std::string& worldName)
@@ -453,7 +491,7 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
     }
     if (steps[1]) {
         reportStatus(worldName, "write_houses", "running");
-        writeHouseGeojson(wrp, basePathGeojson);
+        writeGeojsons(wrp, basePathGeojson, worldName);
         reportStatus(worldName, "write_houses", "done");
     }
     
