@@ -48,7 +48,7 @@ class grad_meh_config
 		};
 		class houses: sat {
 			y = (5 + 1 * LOADING_STEP_H) * GRID_H;
-			class Controls {
+			class Controls: Controls {
 				class check: check {
 					idc = IDC_CONFIG_CHECK_HOUSES;
 				};
@@ -59,7 +59,7 @@ class grad_meh_config
 		};
 		class preview: sat {
 			y = (5 + 2 * LOADING_STEP_H) * GRID_H;
-			class Controls {
+			class Controls: Controls {
 				class check: check {
 					idc = IDC_CONFIG_CHECK_PREVIEW;
 				};
@@ -70,7 +70,7 @@ class grad_meh_config
 		};
 		class meta: sat {
 			y = (5 + 3 * LOADING_STEP_H) * GRID_H;
-			class Controls {
+			class Controls: Controls {
 				class check: check {
 					idc = IDC_CONFIG_CHECK_META;
 				};
@@ -81,7 +81,7 @@ class grad_meh_config
 		};
 		class dem: sat {
 			y = (5 + 4 * LOADING_STEP_H) * GRID_H;
-			class Controls {
+			class Controls: Controls {
 				class check: check {
 					idc = IDC_CONFIG_CHECK_DEM;
 				};
