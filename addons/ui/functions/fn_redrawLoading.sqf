@@ -29,13 +29,17 @@ private _loadingList = _display displayCtrl IDC_LOADINGLIST;
 } forEach (allControls _display);
 
 
+private _allDone = true;
 private _yPos = 0;
 {
-	private _item = [
+	private _return = [
 		_display,
 		_loadingList,
 		_x
 	] call (uiNamespace getVariable "grad_meh_fnc_createLoadingItem");
+
+	_return params ["_item", "_done"];
+	_allDone = _allDone && _done;
 
 	_item ctrlSetPositionY _yPos;
 	_item ctrlCommit 0;
@@ -43,3 +47,13 @@ private _yPos = 0;
 	private _height = (ctrlPosition _item) select 3;
 	_yPos = _yPos + _height;
 } forEach _worlds;
+
+if (_allDone) then {
+	[_display] spawn {
+		params ["_display"];
+
+		private _parent = displayParent _display;
+		_display closeDisplay 1;
+		_parent createDisplay "grad_meh_done";
+	};
+};

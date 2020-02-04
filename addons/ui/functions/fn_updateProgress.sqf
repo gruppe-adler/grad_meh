@@ -48,4 +48,8 @@ _progress = [_progress, _worldName, [_running, _done, _canceled], true] call (ui
 
 uiNamespace setVariable ["grad_meh_progress", _progress];
 
-[(uiNamespace getVariable "grad_meh_loadingDisplay")] call (uiNamespace getVariable "grad_meh_fnc_redrawLoading");
+private _loadingDisplay = uiNamespace getVariable ["grad_meh_loadingDisplay", displayNull];
+
+if !(isNull _loadingDisplay) then {
+	[_loadingDisplay] call (uiNamespace getVariable "grad_meh_fnc_redrawLoading");
+}

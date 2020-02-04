@@ -20,6 +20,7 @@ class ctrlControlsGroupNoHScrollbars;
 class ctrlButton;
 class ctrlCheckbox;
 class ctrlButtonSearch;
+class ctrlStructuredText;
 
 #include "idcmacros.hpp"
 
@@ -31,6 +32,7 @@ class ctrlButtonSearch;
 #include "dialogs\main.hpp"
 #include "dialogs\loading.hpp"
 #include "dialogs\config.hpp"
+#include "dialogs\done.hpp"
 
 #include "CfgFunctions.hpp"
 
