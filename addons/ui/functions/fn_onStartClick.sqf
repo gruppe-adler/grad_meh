@@ -21,4 +21,7 @@ private _display = ctrlParent _control;
 
 private _maps = [_display] call (uiNamespace getVariable "grad_meh_fnc_getSelectedMaps");
 
+// exit if no map is seleced
+if ((count _maps) isEqualTo 0) exitWith {};
+
 [_maps] call (uiNamespace getVariable "grad_meh_fnc_export");
