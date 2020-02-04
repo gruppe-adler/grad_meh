@@ -3,6 +3,7 @@ class grad_meh_loading
 	idd = -1;
 	movingEnable = false;
 	onLoad = "uiNamespace setVariable ['grad_meh_loadingDisplay', (_this select 0)];";
+	onKeyDown = "_this call (uiNamespace getVariable 'grad_meh_fnc_onKeyDown');";
 	class ControlsBackground
 	{
 		class main: ctrlStatic {

@@ -21,4 +21,4 @@ private _display = ctrlParent _control;
 
 private _maps = [_display] call (uiNamespace getVariable "grad_meh_fnc_getSelectedMaps");
 
-[_display, _maps] call (uiNamespace getVariable "grad_meh_fnc_export");
+[_maps] call (uiNamespace getVariable "grad_meh_fnc_export");

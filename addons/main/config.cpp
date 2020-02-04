@@ -20,3 +20,5 @@ class Intercept {
         };
     };
 };
+
+#include "CfgFunctions.hpp"
