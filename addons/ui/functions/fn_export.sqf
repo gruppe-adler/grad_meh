@@ -48,13 +48,21 @@ _loadingDisplay setVariable ["grad_meh_worlds", _maps];
 [_loadingDisplay] call (uiNamespace getVariable "grad_meh_fnc_redrawLoading");
 
 // export
-{
-	gradMehExportMap [
-		_x,
-		_exportSat,
-		_exportHouses,
-		_exportPreviewImg,
-		_exportMeta,
-		_exportDem
-	];
-} forEach _maps;
+_maps spawn {
+	{
+		private _started = false;
+		
+		while { !_started } do {
+			_started = gradMehExportMap [
+				_x,
+				_exportSat,
+				_exportHouses,
+				_exportPreviewImg,
+				_exportMeta,
+				_exportDem
+			];
+
+			sleep 1;
+		};
+	} forEach _this;
+}
