@@ -21,11 +21,11 @@ private _display = ctrlParent _control;
 
 private _maps = _display getVariable ["grad_meh_selectedMaps", []];
 
-private _exportSat = ctrlChecked (_display displayCtrl IDC_CONFIG_CHECK_SAT);
-private _exportHouses = ctrlChecked (_display displayCtrl IDC_CONFIG_CHECK_HOUSES);
-private _exportPreviewImg = ctrlChecked (_display displayCtrl IDC_CONFIG_CHECK_PREVIEW);
-private _exportMeta = ctrlChecked (_display displayCtrl IDC_CONFIG_CHECK_META);
-private _exportDem = ctrlChecked (_display displayCtrl IDC_CONFIG_CHECK_DEM);
+private _exportSat = cbChecked (_display displayCtrl IDC_CONFIG_CHECK_SAT);
+private _exportHouses = cbChecked (_display displayCtrl IDC_CONFIG_CHECK_HOUSES);
+private _exportPreviewImg = cbChecked (_display displayCtrl IDC_CONFIG_CHECK_PREVIEW);
+private _exportMeta = cbChecked (_display displayCtrl IDC_CONFIG_CHECK_META);
+private _exportDem = cbChecked (_display displayCtrl IDC_CONFIG_CHECK_DEM);
 
 [
 	_maps,
