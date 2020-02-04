@@ -9,7 +9,7 @@
  * NONE
  *
  * Example:
- * _this call grad_meh_fnc_onStartClick;
+ * _this call grad_meh_fnc_onConfigStartClick;
  *
  * Public: No
  */
