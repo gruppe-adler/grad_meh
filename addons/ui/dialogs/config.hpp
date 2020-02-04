@@ -26,10 +26,10 @@ class grad_meh_config
 			y = (5 + 0 * LOADING_STEP_H) * GRID_H;
 			w = safezoneW;
 			h = LOADING_STEP_H * GRID_H;
-			idc = IDC_CONFIG_SAT;
+			idc = -1;
 			class Controls {
 				class check: ctrlCheckbox {
-					idc = IDC_CONFIG_CHECKBOX;
+					idc = IDC_CONFIG_CHECK_SAT;
 					x = 0;
 					y = LOADING_STEP_H * 0.05 * GRID_H;
 					w = LOADING_STEP_H * 0.9 * GRID_W;
@@ -48,8 +48,10 @@ class grad_meh_config
 		};
 		class houses: sat {
 			y = (5 + 1 * LOADING_STEP_H) * GRID_H;
-			idc = IDC_CONFIG_HOUSES;
 			class Controls: Controls {
+				class check: check {
+					idc = IDC_CONFIG_CHECK_HOUSES;
+				};
 				class text: text {
 					text = "Export houses";
 				};
@@ -57,8 +59,10 @@ class grad_meh_config
 		};
 		class preview: sat {
 			y = (5 + 2 * LOADING_STEP_H) * GRID_H;
-			idc = IDC_CONFIG_PREVIEW;
 			class Controls: Controls {
+				class check: check {
+					idc = IDC_CONFIG_CHECK_PREVIEW;
+				};
 				class text: text {
 					text = "Export preview image";
 				};
@@ -66,8 +70,10 @@ class grad_meh_config
 		};
 		class meta: sat {
 			y = (5 + 3 * LOADING_STEP_H) * GRID_H;
-			idc = IDC_CONFIG_META;
 			class Controls: Controls {
+				class check: check {
+					idc = IDC_CONFIG_CHECK_META;
+				};
 				class text: text {
 					text = "Export meta.json";
 				};
@@ -75,8 +81,10 @@ class grad_meh_config
 		};
 		class dem: sat {
 			y = (5 + 4 * LOADING_STEP_H) * GRID_H;
-			idc = IDC_CONFIG_DEM;
 			class Controls: Controls {
+				class check: check {
+					idc = IDC_CONFIG_CHECK_DEM;
+				};
 				class text: text {
 					text = "Export digital elevation model";
 				};
