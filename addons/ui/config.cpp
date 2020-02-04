@@ -18,6 +18,8 @@ class ctrlStatic;
 class ctrlStaticPictureKeepAspect;
 class ctrlControlsGroupNoHScrollbars;
 class ctrlButton;
+class ctrlCheckbox;
+class ctrlButtonSearch;
 
 #include "idcmacros.hpp"
 
@@ -28,6 +30,7 @@ class ctrlButton;
 // dialogs
 #include "dialogs\main.hpp"
 #include "dialogs\loading.hpp"
+#include "dialogs\config.hpp"
 
 #include "CfgFunctions.hpp"
 

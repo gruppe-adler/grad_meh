@@ -5,6 +5,8 @@ class CfgFunctions {
 			class createLoadingItem {};
 			class createMapItem {};
 			class getSelectedMaps {};
+			class onConfigClick {};
+			class onConfigStartClick {};
 			class onKeyDown {};
 			class onLoad {};
 			class onLoadMainMenu {};

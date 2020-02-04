@@ -36,11 +36,19 @@ class grad_meh_main
 		class start: ctrlButton {
 			x = safezoneX + GRID_W * SPACING;
 			y = safezoneY + safezoneH - (START_BTN_HEIGHT + SPACING) * GRID_H;
-			w = safeZoneW - GRID_W * SPACING * 2;
+			w = safeZoneW - (SPACING * 3 + START_BTN_HEIGHT) * GRID_W;
 			h = START_BTN_HEIGHT * GRID_H;
 			text = "Start";
 			sizeEx = START_BTN_HEIGHT * (4/5) * GRID_H;
 			onMouseButtonClick="_this call (uiNamespace getVariable 'grad_meh_fnc_onStartClick');"
+		};
+		class config: ctrlButtonSearch {
+			x = safezoneX + safezoneW - GRID_W * (SPACING + START_BTN_HEIGHT);
+			y = safezoneY + safezoneH - (START_BTN_HEIGHT + SPACING) * GRID_H;
+			w = START_BTN_HEIGHT * GRID_W;
+			h = START_BTN_HEIGHT * GRID_H;
+			text = "\a3\3DEN\Data\Displays\Display3DEN\panelright\submode_logic_module_ca.paa";
+			onMouseButtonClick="_this call (uiNamespace getVariable 'grad_meh_fnc_onConfigClick');"
 		};
 	};
 };
