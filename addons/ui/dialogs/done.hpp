@@ -45,7 +45,7 @@ class grad_meh_done
 			h = START_BTN_HEIGHT * GRID_H;
 			text = "Close";
 			sizeEx = START_BTN_HEIGHT * (4/5) * GRID_H;
-			onMouseButtonClick="closeDisplay (ctrlParent (_this select 0));";
+			onMouseButtonClick="(ctrlParent (_this select 0)) closeDisplay 1;";
 		};
 	};
 };
