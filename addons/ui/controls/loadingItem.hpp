@@ -1,8 +1,8 @@
 #include "loadingStep.hpp"
 
 class grad_meh_loadingItem: ctrlControlsGroupNoScrollbars {
-	x = 0;
-	y = 0;
+	x = SPACING * GRID_W;
+	y = SPACING * GRID_H;
 	w = safezoneW;
 	h = (5 + 6 * LOADING_STEP_H) * GRID_H;
 	class Controls {
@@ -30,7 +30,7 @@ class grad_meh_loadingItem: ctrlControlsGroupNoScrollbars {
 			class Controls: Controls {
 				class done: done {};
 				class text: text {
-					text = "Expot satellite image";
+					text = "Export satellite image";
 				};
 			};
 		};

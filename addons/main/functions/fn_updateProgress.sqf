@@ -51,5 +51,5 @@ uiNamespace setVariable ["grad_meh_progress", _progress];
 private _loadingDisplay = uiNamespace getVariable ["grad_meh_loadingDisplay", displayNull];
 
 if !(isNull _loadingDisplay) then {
-	[_loadingDisplay] call (uiNamespace getVariable "grad_meh_fnc_redrawLoading");
+	[_loadingDisplay] call (uiNamespace getVariable "grad_meh_fnc_loading_redraw");
 }

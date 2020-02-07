@@ -65,7 +65,7 @@ playScriptedMission [
 			// create loading display
 			private _loadingDisplay = (findDisplay 46) createDisplay "grad_meh_loading";
 			_loadingDisplay setVariable ["grad_meh_worlds", _maps];
-			[_loadingDisplay] call (uiNamespace getVariable "grad_meh_fnc_redrawLoading");
+			[_loadingDisplay] call (uiNamespace getVariable "grad_meh_fnc_loading_redraw");
 
 			// export
 			{

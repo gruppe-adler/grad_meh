@@ -21,6 +21,12 @@ class ctrlButton;
 class ctrlCheckbox;
 class ctrlButtonSearch;
 class ctrlStructuredText;
+class ctrlStaticBackground;
+class ctrlStaticTitle;
+class ctrlStaticFooter;
+class ctrlButtonOK;
+class ctrlButtonClose;
+class ctrlButtonCancel;
 
 #include "idcmacros.hpp"
 
@@ -46,7 +52,7 @@ class RscDisplayMain: RscStandardDisplay
 			y = 0;
 			w = 0;
 			h = 0;
-			onLoad="_this call (uiNamespace getVariable 'grad_meh_fnc_onLoadMainMenu');";
+			onLoad="params ['_ctrl']; (ctrlParent _ctrl) createDisplay 'grad_meh_main';";
 		};
 	};
 };

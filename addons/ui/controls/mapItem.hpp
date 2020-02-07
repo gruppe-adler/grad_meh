@@ -6,7 +6,7 @@ class grad_meh_mapItem: ctrlControlsGroupNoScrollbars {
 	h = MAP_ITEM_H * GRID_H;
 	class Controls {
 		class background: ctrlStatic {
-			idc = 1;
+			idc = IDC_MAPITEM_BACKGROUND;
 			colorBackground[] = {1,1,1,1};
 			x = 0;
 			y = 0;
@@ -55,9 +55,9 @@ class grad_meh_mapItem: ctrlControlsGroupNoScrollbars {
 			h = MAP_ITEM_H * GRID_H;
 			colorBackground[]={0,0,0,0};
 			colorBackgroundActive[]={0,0,0,0};
-			onMouseEnter="params ['_control']; private _grp = ctrlParentControlsGroup _control; (_grp controlsGroupCtrl 1) ctrlShow true;";
-			onMouseExit="params ['_control']; private _grp = ctrlParentControlsGroup _control; (_grp controlsGroupCtrl 1) ctrlShow false;";
-			onMouseButtonClick="_this call (uiNamespace getVariable 'grad_meh_fnc_onMapItemClick');";
+			onMouseEnter=QUOTE(params ['_c']; ((ctrlParentControlsGroup _c) controlsGroupCtrl IDC_MAPITEM_BACKGROUND) ctrlShow true;);
+			onMouseExit=QUOTE(params ['_c']; ((ctrlParentControlsGroup _c) controlsGroupCtrl IDC_MAPITEM_BACKGROUND) ctrlShow false;);
+			onMouseButtonClick="_this call (uiNamespace getVariable 'grad_meh_fnc_mapItem_onClick');";
 		};
 	};
 };

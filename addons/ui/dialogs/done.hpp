@@ -1,51 +1,33 @@
-#define START_BTN_HEIGHT 8
+#define DIALOG_WIDTH (80 * GRID_W)
+#define DIALOG_HEIGHT (57 * GRID_H)
+#define DIALOG_TITLE "Gruppe Adler MEH"
+#define DIALOG_ONLY_CLOSE true
+#define DIALOG_NON_SCROLLABLE true
 
-class grad_meh_done
-{
+class grad_meh_done {
 	idd = -1;
+	onUnLoad = "_this call (uiNamespace getVariable 'grad_meh_fnc_done_onUnLoad');";
 	movingEnable = false;
-	class ControlsBackground
-	{
-		class main: ctrlStatic {
-			colorBackground[] = {0.231,0.231,0.231,1};
-			x = safezoneX;
-			y = safezoneY;
-			w = safezoneW;
-			h = safezoneH;
-		};
-		class logo: ctrlStaticPictureKeepAspect {
-			x = safezoneX;
-			y = safezoneY;
-			w = safezoneW;
-			h = safezoneH;
-			text="\x\grad_meh\addons\ui\data\logo_ca.paa";
-			colorText[] = {1,1,1,0.3};
-		};
-		class text: ctrlStructuredText {
-			style = 2;
-			x = safezoneX;
-			y = safezoneY;
-			w = safezoneW;
-			h = safezoneH;
-			text = "<img image=\"\x\grad_meh\addons\ui\data\logo_ca.paa\"/><br/>ALL DONE";
-			sizeEx = 10 * GRID_H;
-			class Attributes: Attributes
-			{
-				align="center";
-				valign="middle";
-				size=1;
-			};
+	#include "base\start.hpp"
+	class text: ctrlStructuredText {
+		x = 0 + GRID_W;
+		y = 0 + GRID_H;
+		w = QUOTE(DIALOG_WIDTH - GRID_W * 2);
+		h = QUOTE(DIALOG_HEIGHT - GRID_H * 2);
+		text = QUOTE(<t size='20 * GRID_H'><img image='\x\grad_meh\addons\ui\data\logo_ca.paa'/></t><br/>EXPORT FINISHED);
+		shadow = 0;
+		class Attributes: Attributes
+		{
+			align = "center";
+			valign = "middle";
+			size = 5 * GRID_H;
 		};
 	};
-	class Controls {
-		class close: ctrlButton {
-			x = safezoneX + GRID_W * SPACING;
-			y = safezoneY + safezoneH - (START_BTN_HEIGHT + SPACING) * GRID_H;
-			w = safeZoneW - SPACING * 2 * GRID_W;
-			h = START_BTN_HEIGHT * GRID_H;
-			text = "Close";
-			sizeEx = START_BTN_HEIGHT * (4/5) * GRID_H;
-			onMouseButtonClick="(ctrlParent (_this select 0)) closeDisplay 1;";
-		};
-	};
+	#include "base\end.hpp"
 };
+
+#undef DIALOG_WIDTH
+#undef DIALOG_HEIGHT
+#undef DIALOG_TITLE
+#undef DIALOG_ONLY_CLOSE
+#undef DIALOG_NON_SCROLLABLE

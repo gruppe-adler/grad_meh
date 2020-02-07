@@ -9,7 +9,7 @@
  * NONE
  *
  * Example:
- * [(uiNamespace getVariable "grad_meh_loadingDisplay")] call grad_meh_fnc_redrawLoading;
+ * [(uiNamespace getVariable "grad_meh_loadingDisplay")] call grad_meh_fnc_loading_redraw;
  *
  * Public: No
  */
@@ -19,7 +19,7 @@
 params ["_display"];
 
 private _worlds = _display getVariable ["grad_meh_worlds", []];
-private _loadingList = _display displayCtrl IDC_LOADINGLIST;
+private _loadingList = _display displayCtrl IDC_DIALOG_CONTENT;
 
 // clear loadingList 
 {
@@ -30,13 +30,13 @@ private _loadingList = _display displayCtrl IDC_LOADINGLIST;
 
 
 private _allDone = true;
-private _yPos = 0;
+private _yPos = (SPACING * GRID_H);
 {
 	private _return = [
 		_display,
 		_loadingList,
 		_x
-	] call (uiNamespace getVariable "grad_meh_fnc_createLoadingItem");
+	] call (uiNamespace getVariable "grad_meh_fnc_loadingItem_create");
 
 	_return params ["_item", "_done"];
 	_allDone = _allDone && _done;
