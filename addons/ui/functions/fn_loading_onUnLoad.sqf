@@ -16,7 +16,11 @@ private _maps = _display getVariable ["grad_meh_worlds", []];
 	] call (uiNamespace getVariable "BIS_fnc_guiMessage");
 
 	if (_result) exitWith {
-		// TODO: exit mission
+		// exit mission
+		[] spawn {
+			sleep 0.5;
+			endMission "END1";
+		};
 	};
 
 	// create loading display

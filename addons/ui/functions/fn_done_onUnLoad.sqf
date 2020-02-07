@@ -2,4 +2,8 @@
 
 params ["_display", "_exitCode"];
 
-// TODO: exit mission
+// exit mission
+[] spawn {
+	sleep 0.5;
+	endMission "END1";
+};
