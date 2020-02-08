@@ -41,14 +41,7 @@ Gruppe Adler Map Exporter adds a script command, which is used by the UI. If you
 ||meta: [Boolean](https://community.bistudio.com/wiki/Boolean) - Export meta.json|
 ||dem: [Boolean](https://community.bistudio.com/wiki/Boolean) - Export Digital Elevation Model|
 |||
-|Return Value| [Number](https://community.bistudio.com/wiki/Number) - Status code
-|| `0` - Export process started nominally
-|| `1` - Error: Invalid arguments given
-|| `2` - Error: Another export is currently running
-|| `3` - Error: Map wasn't found in config file
-|| `4` - Error: Map invalid because `worldSize` field in config is missing
-|| `5` - Error: PBO of map's WRP not found (Most likely because it is an EBO)
-|| `6` - Error: PBO map still populating
+|Return Value| [Number](https://community.bistudio.com/wiki/Number) - Status code<br>`0` - Export process started nominally<br>`1` - Error: Invalid arguments given<br>`2` - Error: Another export is currently running<br>`3` - Error: Map wasn't found in config file<br>`4` - Error: Map invalid because `worldSize` field in config is missing<br>`5` - Error: PBO of map's WRP not found (Most likely because it is an EBO)<br>`6` - Error: PBO map still populating (MEH has to do this once upon game start, before exporting anything)
 |||
 |Examples|`gradMehExportMap ["Stratis", true, true, true, true, true];`|  
 
@@ -56,7 +49,7 @@ Gruppe Adler Map Exporter adds a script command, which is used by the UI. If you
 
 ### How long will an export take?
 How long an export takes will vary a lot depending on what exactly you want to do, with the biggest influencing factors being map size and object count.  
-But for reference: It took us about 5 minutes to export everything for Stratis.
+But for reference: It took us less than five minutes to export everything for Stratis.
 
 ### Is there some exported data already available for download
 Yes, check out [this repository](https://github.com/gruppe-adler/meh-data). (We would appreciate if you contribute exported maps to this repository)
