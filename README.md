@@ -29,7 +29,7 @@ Gruppe Adler Map Exporter adds a script command, which is used by the UI. If you
 ### `gradMehExportMap`
 |**Syntax**| |  
 |---|---|  
-|Description| Exports given parts of given map. |
+|Description| Export given parts of given map. |
 |||
 |Syntax| **gradMehExportMap** [mapId, sat, houses, previewImg, meta, dem]
 |||
@@ -41,7 +41,14 @@ Gruppe Adler Map Exporter adds a script command, which is used by the UI. If you
 ||meta: [Boolean](https://community.bistudio.com/wiki/Boolean) - Export meta.json|
 ||dem: [Boolean](https://community.bistudio.com/wiki/Boolean) - Export Digital Elevation Model|
 |||
-|Return Value| [Boolean](https://community.bistudio.com/wiki/Boolean) - [true](https://community.bistudio.com/wiki/true) if export process started correctly, [false](https://community.bistudio.com/wiki/false) if not ([Why shouldn't it?](#Limitations))|
+|Return Value| [Number](https://community.bistudio.com/wiki/Number) - Status code
+|| `0` - Export process started nominally
+|| `1` - Error: Invalid arguments given
+|| `2` - Error: Another export is currently running
+|| `3` - Error: Map wasn't found in config file
+|| `4` - Error: Map invalid because `worldSize` field in config is missing
+|| `5` - Error: PBO of map's WRP not found (Most likely because it is an EBO)
+|| `6` - Error: PBO map still populating
 |||
 |Examples|`gradMehExportMap ["Stratis", true, true, true, true, true];`|  
 
