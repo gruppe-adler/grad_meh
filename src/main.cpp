@@ -36,6 +36,8 @@
 #endif // _WIN32
 
 #define GRAD_MEH_VERSION 0.1
+#define GRAD_MEH_MAX_COLOR_DIF 441.6729559300637f
+#define GRAD_MEH_OVERLAP_THRESHOLD 0.95f
 
 using namespace intercept;
 using namespace OpenImageIO_v2_1;
@@ -112,6 +114,10 @@ void populateMap() {
 fs::path findPboPath(std::string path) {
     size_t matchLength = 0;
     fs::path retPath;
+
+    if (boost::starts_with(path, "\\")) {
+        path = path.substr(1);
+    }
 
     for (auto const& [key, val] : entryPboMap)
     {
@@ -206,6 +212,10 @@ void writePreviewImage(const std::string& worldName, std::filesystem::path& base
     auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
     std::string picturePath = sqf::get_text(mapConfig >> "pictureMap");
     threadLock.unlock();
+
+    if (boost::starts_with(picturePath, "\\")) {
+        picturePath = picturePath.substr(1);
+    }
 
     auto pboPath = findPboPath(picturePath);
     grad_aff::Pbo prewviewPbo(pboPath.string());
@@ -317,6 +327,67 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
     writeLocations(worldName, basePathGeojson);
 }
 
+float_t mean(std::vector<float_t>& equalities)
+{
+    float_t mean = 0;
+    std::for_each(equalities.begin(), equalities.end(), [&mean](float_t& val) {
+        mean += val;
+        });
+
+    mean /= equalities.size();
+    return mean;
+}
+
+float_t compareColors(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2) {
+    return (1 - (std::sqrt(std::pow(r2 - r1, 2) + std::pow(g2 - g1, 2) + std::pow(b2 - b1, 2)) / GRAD_MEH_MAX_COLOR_DIF));
+}
+
+float_t compareRows(std::vector<uint8_t>::iterator mipmap1It, std::vector<uint8_t>::iterator mipmap2It, uint32_t width) {
+    std::vector<float_t> equalities = {};
+    for (size_t i = 0; i < width; i++) {
+        equalities.push_back(compareColors(*mipmap1It, *(mipmap1It + 1), *(mipmap1It + 2), *mipmap2It, *(mipmap2It + 1), *(mipmap2It + 2)));
+        mipmap1It += 4;
+        mipmap2It += 4;
+    }
+
+    return mean(equalities);
+}
+
+uint32_t calcOverLap(MipMap& mipmap1, MipMap& mipmap2) {
+    std::vector<std::pair<float_t, size_t>> bestMatchingOverlaps = {};
+    auto filter = mipmap1.height > 512 ? 6 : 3;
+
+    for (uint32_t overlap = 1; overlap < (mipmap1.height / filter); overlap++) {
+        std::vector<float_t> equalities = {};
+
+        for (size_t i = 0; i < overlap; i++) {
+            auto beginRowUpper = mipmap1.data.begin() + (mipmap2.height - 1 - (overlap - i)) * (size_t)mipmap1.width * 4;
+            auto beginRowLower = mipmap2.data.begin() + i * (size_t)mipmap2.width * 4;
+
+            equalities.push_back(compareRows(beginRowUpper,
+                beginRowLower,
+                (uint32_t)mipmap1.width));
+        }
+
+        auto meanVal = mean(equalities);
+        if (meanVal > GRAD_MEH_OVERLAP_THRESHOLD) {
+            bestMatchingOverlaps.push_back({ meanVal, overlap });
+        }
+    }
+
+    uint32_t calculatedOverlap = 0;
+    float_t bestOverlap = 0;
+
+    for (auto& kvp : bestMatchingOverlaps) {
+        if (kvp.first > bestOverlap) {
+            bestOverlap = kvp.first;
+            calculatedOverlap = kvp.second;
+        }
+    }
+
+    return calculatedOverlap + 1;
+}
+
 void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesystem::path& basePathSat, const std::string& worldName)
 {
     std::vector<std::string> rvmats = {};
@@ -375,13 +446,58 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
         auto last = std::unique(lcoPaths.begin(), lcoPaths.end());
         lcoPaths.erase(last, lcoPaths.end());
 
-        auto layerCellSize = (int32_t)wrp.layerCellSize;
+        // "strechted border" overlap is og overlap/2
 
-        if (boost::iequals(worldName, "Takistan") || boost::iequals(worldName, "Mountains_ACR")) {
-            layerCellSize = 112;
+        // find highest x/y
+        std::vector<std::string> splitResult = {};
+        boost::split(splitResult, ((fs::path)lcoPaths[lcoPaths.size()-1]).filename().string(), boost::is_any_of("_"));
+        uint32_t maxX = std::stoi(splitResult[1]);
+        uint32_t maxY = std::stoi(splitResult[2]);
+
+        // find two tiles "in the middle"
+        uint32_t x = maxX / 2;
+        uint32_t y = maxY / 2;
+
+        prefix = "00";
+
+        if (y > 9 && y < 100) {
+            prefix = "0";
+        }
+        else if (y >= 100) {
+            prefix = "";
         }
 
-        ImageBuf dst(ImageSpec(worldSize, worldSize, 4, TypeDesc::UINT8));
+        std::stringstream upperLcoPathStream; 
+        upperLcoPathStream << x << "_" << prefix << y << "_lco.paa";
+        auto upperPaaPath = upperLcoPathStream.str();
+
+        std::stringstream lowerLcoPathStream;
+        lowerLcoPathStream << x << "_" << prefix << (y + 1) << "_lco.paa";
+        auto lowerPaaPath = lowerLcoPathStream.str();
+
+        MipMap upperMipmap;
+        MipMap lowerMipmap;
+
+        for (auto& lcoPath : lcoPaths) {
+            if (boost::iends_with(lcoPath, upperPaaPath)) {
+                auto upperPbo = grad_aff::Pbo::Pbo(findPboPath(lcoPath).string());
+                auto upperData = upperPbo.getEntryData(lcoPath);
+                auto upperPaa = grad_aff::Paa::Paa(upperData);
+                upperPaa.readPaa();
+                upperMipmap = upperPaa.mipMaps[0];
+            }
+            if (boost::iends_with(lcoPath, lowerPaaPath)) {
+                auto lowerPbo = grad_aff::Pbo::Pbo(findPboPath(lcoPath).string());
+                auto lowerData = lowerPbo.getEntryData(lcoPath);
+                auto lowerPaa = grad_aff::Paa::Paa(lowerData);
+                lowerPaa.readPaa();
+                lowerMipmap = lowerPaa.mipMaps[0];
+            }
+        }
+        
+        auto overlap = calcOverLap(upperMipmap, lowerMipmap);
+
+        ImageBuf dst(ImageSpec(upperMipmap.width + maxX * (upperMipmap.width - overlap), upperMipmap.height + maxY * (upperMipmap.height - overlap), 4, TypeDesc::UINT8));
 
         if (fillerTile != "") {
             auto fillerPbo = grad_aff::Pbo::Pbo(findPboPath(fillerTile).string());
@@ -422,10 +538,24 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
             uint32_t x = std::stoi(splitResult[1]);
             uint32_t y = std::stoi(splitResult[2]);
 
-            ImageBufAlgo::paste(dst, (x * paa.mipMaps[0].height - x * layerCellSize), (y * paa.mipMaps[0].height - y * layerCellSize), 0, 0, src);
+            ImageBufAlgo::paste(dst, (x * paa.mipMaps[0].height - x * overlap), (y * paa.mipMaps[0].height - y * overlap), 0, 0, src);
         }
 
-        size_t tileSize = worldSize / 4;
+        // https://github.com/pennyworth12345/A3_MMSI/wiki/Mapframe-Information#stretching-at-edge-tiles
+        maxX += 1;
+
+        auto hasEqualStrechting = (worldSize == (upperMipmap.width * maxX)) || (worldSize == ((upperMipmap.width - overlap) * maxX));
+        auto strechedBorderSizeStart = overlap / 2;
+        auto strechedBorderSizeEnd = strechedBorderSizeStart;
+
+        if (!hasEqualStrechting) {
+            auto a = upperMipmap.width * maxX;
+            auto b = (upperMipmap.width - (overlap / 2)) + ((upperMipmap.width - overlap) * (maxX - 1));
+            strechedBorderSizeEnd = upperMipmap.width - (a - b);
+        }
+
+        dst = ImageBufAlgo::cut(dst, ROI(strechedBorderSizeStart, dst.spec().width - strechedBorderSizeEnd, strechedBorderSizeStart, dst.spec().height - strechedBorderSizeEnd));
+        size_t tileSize = dst.spec().width / 4;
 
         auto cr = boost::counting_range(0, 4);
         std::for_each(std::execution::par_unseq, cr.begin(), cr.end(), [basePathSat, dst, tileSize] (int i) {
