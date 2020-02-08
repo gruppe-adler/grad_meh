@@ -320,7 +320,7 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
     fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_compression)));
     fis.push(houseInStream);
 
-    std::ofstream houseOut(basePathGeojson / "house.geojson.gz", std::ios::binary);
+    std::ofstream houseOut(basePathGeojson / "House.geojson.gz", std::ios::binary);
     bi::copy(fis, houseOut);
     houseOut.close();
 }
