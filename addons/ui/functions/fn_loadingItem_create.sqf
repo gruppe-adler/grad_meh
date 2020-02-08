@@ -51,7 +51,7 @@ if !(_error isEqualTo "") exitWith {
 		_errorCtrl ctrlSetText _error;
 	};
 
-	[_item, false];
+	[_item, true];
 };
 
 private _item = _display ctrlCreate ['grad_meh_loadingItem', -1, _parentGrp];
