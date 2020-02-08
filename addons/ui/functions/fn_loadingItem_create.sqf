@@ -8,10 +8,10 @@
  * 2: worldName <STRING>
  *
  * Return Value:
- * NONE
+ * [CONTROL, MAP_DONE]
  *
  * Example:
- * _this call grad_meh_fnc_createLoadingItem;
+ * [_display, _grp, "stratis"] call grad_meh_fnc_loadingItem_create;
  *
  * Public: No
  */
@@ -100,5 +100,5 @@ if (_allDone) then {
 	};
 };
 
-_item;
+[_item, _allDone];
 
