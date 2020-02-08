@@ -129,7 +129,7 @@ playScriptedMission [
 						};
 					};
 
-					sleep 2;
+					sleep 10;
 				};
 
 				diag_log format ["[GRAD_MEH]: Started export map %1 [%2, %3, %4, %5, %6]", _x, _exportSat, _exportHouses, _exportPreviewImg, _exportMeta, _exportDem];
