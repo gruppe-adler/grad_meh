@@ -30,9 +30,31 @@ private _STEPS = [
 	["write_dem", IDC_LOADINGITEM_STEP_DEM]
 ];
 
-private _item = _display ctrlCreate ['grad_meh_loadingItem', -1, _parentGrp];
-
 private _displayName = [(configFile >> "CfgWorlds" >> _worldName), "description", ""] call (uiNamespace getVariable "BIS_fnc_returnConfigEntry");
+
+private _error = [(uiNamespace getVariable ["grad_meh_errors", []]), _worldName, ""] call (uiNamespace getVariable "BIS_fnc_getFromPairs");
+
+if !(_error isEqualTo "") exitWith {
+	private _item = _display ctrlCreate ['grad_meh_loadingItem_error', -1, _parentGrp];
+
+	// set name text and color to purple
+	private _nameCtrl = (_item controlsGroupCtrl IDC_LOADINGITEM_NAME);
+	if !(isNull _nameCtrl) then {
+
+		_nameCtrl ctrlSetText _displayName;
+		_nameCtrl ctrlSetTextColor [0.56, 0.067, 0.404, 1];
+	};
+
+	// set error text
+	private _errorCtrl = (_item controlsGroupCtrl IDC_LOADINGITEM_ERROR);
+	if !(isNull _errorCtrl) then {
+		_errorCtrl ctrlSetText _error;
+	};
+
+	[_item, false];
+};
+
+private _item = _display ctrlCreate ['grad_meh_loadingItem', -1, _parentGrp];
 
 (_item controlsGroupCtrl IDC_LOADINGITEM_NAME) ctrlSetText _displayName;
 
@@ -80,25 +102,11 @@ private _allDone = true;
 } forEach _STEPS;
 
 if (_allDone) then {
-	// delete all steps
-	{
-		_x params ["_step", ["_idc", -1]];
-		private _stepCtrl = _item controlsGroupCtrl _idc;
-
-		if !(_stepCtrl isEqualTo controlNull) then {
-			ctrlDelete _stepCtrl;
-		};
-	} forEach _STEPS;
-
-	// set height of whole item to height of name (+ margin) and give it a green color
+	// set name color to green
 	private _nameCtrl = (_item controlsGroupCtrl IDC_LOADINGITEM_NAME);
 	if !(_nameCtrl isEqualTo controlNull) then {
-		private _pos = ctrlPosition _nameCtrl;
-
-		_item ctrlSetPositionH ((_pos select 3) + (_pos select 1) * 2);
 		_nameCtrl ctrlSetTextColor [0.4, 0.667, 0.4, 1];
 	};
 };
 
 [_item, _allDone];
-

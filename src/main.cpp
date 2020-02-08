@@ -35,6 +35,8 @@
 #include <codecvt>
 #endif // _WIN32
 
+#include "../addons/main/status_codes.hpp"
+
 #define GRAD_MEH_VERSION 0.1
 #define GRAD_MEH_MAX_COLOR_DIF 441.6729559300637f
 #define GRAD_MEH_OVERLAP_THRESHOLD 0.95f
@@ -53,6 +55,7 @@ using SQFPar = game_value_parameter;
 static std::map<std::string, fs::path> entryPboMap = {};
 
 static bool gradMehIsRunning = false;
+static bool gradMehMapIsPopulating = false;
 
 int intercept::api_version() { //This is required for the plugin to work.
     return INTERCEPT_SDK_API_VERSION;
@@ -106,6 +109,7 @@ void populateMap() {
             entryPboMap.insert({ pbo.productEntries["prefix"] , p });
         }
     }
+    gradMehMapIsPopulating = false;
 }
 
 /*
@@ -588,10 +592,6 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
         fs::create_directories(basePathSat);
     }
 
-    // Populate Pbo Map
-    if (entryPboMap.size() == 0)
-        populateMap();
-
     std::string curWorldPath = "";
 
     // Find Wrp Path
@@ -652,6 +652,11 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
 
 game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
 
+    if (gradMehIsRunning)
+        return GRAD_MEH_STATUS_ERR_ALREADY_RUNNING;
+
+    if (gradMehMapIsPopulating)
+        return GRAD_MEH_STATUS_ERR_PBO_POPULATING;
 
     std::string worldName;
 
@@ -666,7 +671,7 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
         
         if (parArray.size() <= 0 || parArray.size() >= 7) {
             gs.set_script_error(iet::assertion_failed, "Wrong amount of arguments!"sv);
-            return false;
+            return GRAD_MEH_STATUS_ERR_ARGS;
         }
 
         if (parArray[0].type_enum() == game_data_type::STRING) {
@@ -680,32 +685,32 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
                 }
                 else {
                     gs.set_script_error(iet::assertion_failed, types::r_string("Expected bool at index ").append(std::to_string(i)).append("!"));
-                    return false;
+                    return GRAD_MEH_STATUS_ERR_ARGS;
                 }
             }
         }
         else {
             gs.set_script_error(iet::assertion_failed, "First element in the parameter array has to be a string!"sv);
-            return false;
+            return GRAD_MEH_STATUS_ERR_ARGS;
         }
 
     }
     else {
         gs.set_script_error(iet::assertion_failed, "Expected a string or an array!"sv);
-        return false;
+        return GRAD_MEH_STATUS_ERR_ARGS;
     }
 
     auto configWorld = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
     if (!boost::iequals(sqf::config_name(configWorld),  worldName)) {
         gs.set_script_error(iet::assertion_failed, "Couldn't find the specified world!"sv);
-        return false;
+        return GRAD_MEH_STATUS_ERR_NOT_FOUND;
     }
 
     // Filters out maps like CAWorld
     auto worldSize = (int32_t)sqf::get_number(configWorld >> "mapSize");
     if (worldSize == 0) {
         gs.set_script_error(iet::assertion_failed, "Invalid world!"sv);
-        return false;
+        return GRAD_MEH_STATUS_ERR_NO_WORLD_SIZE;
     }
 
     // check for leading /
@@ -714,23 +719,43 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
         worldPath = worldPath.substr(1);
     }
 
+    // try to find pbo
+    auto wrpPboPath = findPboPath(worldPath);
+    if (wrpPboPath == "") {
+        return GRAD_MEH_STATUS_ERR_PBO_NOT_FOUND;
+    }
+    else {
+        try {
+            grad_aff::Pbo wrpPbo(wrpPboPath.string());
+            if (!wrpPbo.hasEntry(worldPath))
+                return GRAD_MEH_STATUS_ERR_PBO_NOT_FOUND;
+        } catch (std::exception& ex) {
+            sqf::diag_log(std::string("[grad_meh] Exception when opening PBO: ").append(ex.what()));
+            return GRAD_MEH_STATUS_ERR_PBO_NOT_FOUND;
+        }
+    }
+
     if (!gradMehIsRunning) {
         gradMehIsRunning = true;
         std::thread readWrpThread(extractMap, worldName, worldPath, worldSize, steps);
         readWrpThread.detach();
-        return true;
+        return GRAD_MEH_STATUS_OK;
     }
     else {
-        sqf::diag_log("gradMeh is already running! Aborting!");
-        return false;
+        sqf::diag_log("[grad_meh] gradMeh is already running! Aborting!");
+        return GRAD_MEH_STATUS_ERR_ALREADY_RUNNING;
     }
 }
 
 void intercept::pre_start() {
     static auto grad_meh_export_map_string =
-        client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::BOOL, game_data_type::STRING);
+        client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::SCALAR, game_data_type::STRING);
     static auto grad_meh_export_map_array =
-        client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::BOOL, game_data_type::ARRAY);
+        client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::SCALAR, game_data_type::ARRAY);
+
+    gradMehMapIsPopulating = true;
+    std::thread mapPopulateThread(populateMap);
+    mapPopulateThread.detach();
 }
 
 void intercept::pre_init() {
