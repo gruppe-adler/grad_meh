@@ -65,7 +65,7 @@ playScriptedMission [
 			// create loading display
 			private _loadingDisplay = (findDisplay 46) createDisplay "grad_meh_loading";
 			_loadingDisplay setVariable ["grad_meh_worlds", _maps];
-			[_loadingDisplay] call (uiNamespace getVariable "grad_meh_fnc_redrawLoading");
+			[_loadingDisplay] call (uiNamespace getVariable "grad_meh_fnc_loading_redraw");
 
 			// export
 			{
@@ -83,6 +83,8 @@ playScriptedMission [
 
 					sleep 1;
 				};
+
+				diag_log format ["[GRAD_MEH]: Started export map %1 [%2, %3, %4, %5, %6]", _x, _exportSat, _exportHouses, _exportPreviewImg, _exportMeta, _exportDem];
 			} forEach _maps;
 		};
 

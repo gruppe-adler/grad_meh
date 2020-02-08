@@ -1,6 +1,7 @@
 /*
  * Author: DerZade
- * Triggerd by the 'onMouseDown'-EH of any map item control
+ * Triggerd by the 'onMouseDown'-EH of any map item control.
+ * Sets it to "selected" state
  *
  * Arguments:
  * n/a
@@ -9,13 +10,13 @@
  * NONE
  *
  * Example:
- * _this call grad_meh_fnc_onMapItemClick;
+ * _this call grad_meh_fnc_mapItem_onClick;
  *
  * Public: No
  */
 #include "../idcmacros.hpp"
 
-params ["_control", "_button", "_xPos", "_yPos", "_shift", "_ctrl", "_alt"];
+params ["_control"];
 
 private _grp = ctrlParentControlsGroup _control;
 private _selected = _grp getVariable ['grad_meh_selected', false];

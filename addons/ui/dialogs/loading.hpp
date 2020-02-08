@@ -1,35 +1,18 @@
-class grad_meh_loading
-{
+#define DIALOG_WIDTH (60 * GRID_W)
+#define DIALOG_HEIGHT (80 * GRID_H)
+#define DIALOG_TITLE "Gruppe Adler MEH"
+#define DIALOG_ONLY_CLOSE true
+
+class grad_meh_loading {
 	idd = -1;
 	movingEnable = false;
 	onLoad = "uiNamespace setVariable ['grad_meh_loadingDisplay', (_this select 0)];";
-	onKeyDown = "_this call (uiNamespace getVariable 'grad_meh_fnc_onKeyDown');";
-	class ControlsBackground
-	{
-		class main: ctrlStatic {
-			colorBackground[] = {0.231,0.231,0.231,1};
-			x = safezoneX;
-			y = safezoneY;
-			w = safezoneW;
-			h = safezoneH;
-		};
-		class logo: ctrlStaticPictureKeepAspect {
-			x = safezoneX;
-			y = safezoneY;
-			w = safezoneW;
-			h = safezoneH;
-			text="\x\grad_meh\addons\ui\data\logo_ca.paa";
-			colorText[] = {1,1,1,0.3};
-		}
-	};
-	class Controls {
-		class maplist: ctrlControlsGroupNoHScrollbars {
-			idc = IDC_LOADINGLIST;
-			x = safezoneX + SPACING * GRID_W;
-			y = safezoneY + SPACING * GRID_H;
-			w = safezoneW - SPACING * 2 * GRID_W;
-			h = safezoneH - SPACING * 2 * GRID_H;
-			class Controls {};
-		};
-	}
+	onUnLoad = "_this call (uiNamespace getVariable 'grad_meh_fnc_loading_onUnLoad');";
+	#include "base\start.hpp"
+	#include "base\end.hpp"
 };
+
+#undef DIALOG_WIDTH
+#undef DIALOG_HEIGHT
+#undef DIALOG_TITLE
+#undef DIALOG_ONLY_CLOSE
