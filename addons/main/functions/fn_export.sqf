@@ -19,13 +19,7 @@
  * Public: No
  */
 
-#define STATUS_OK 0
-#define STATUS_ERR_ARGS 1
-#define STATUS_ERR_ALREADY_RUNNING 2
-#define STATUS_ERR_NOT_FOUND 3
-#define STATUS_ERR_NO_WORLD_SIZE 4
-#define STATUS_ERR_PBO_NOT_FOUND 5
-#define STATUS_ERR_PBO_POPULATING 6
+#include "../status_codes.hpp"
 
 params [
 	["_maps", [], []],
@@ -69,7 +63,7 @@ playScriptedMission [
 				["_exportDem", true, [true]]
 			];
 
-			
+
 			private _reportError = {
 				params [["_world", ""], ["_error", ""]];
 				diag_log format ["[GRAD_MEH]: Error while exporting map %1: %2", _world, _error];
@@ -79,7 +73,7 @@ playScriptedMission [
 
 				uiNamespace setVariable ["grad_meh_errors", _errors];
 
-				// redraw loading display				
+				// redraw loading display
 				private _loadingDisplay = uiNamespace getVariable ["grad_meh_loadingDisplay", displayNull];
 				if !(isNull _loadingDisplay) then {
 					[_loadingDisplay] call (uiNamespace getVariable "grad_meh_fnc_loading_redraw");
@@ -96,7 +90,7 @@ playScriptedMission [
 			// export
 			{
 				private _startedOrAborted = false;
-				
+
 				while { !_startedOrAborted } do {
 					private _status = gradMehExportMap [
 						_x,
@@ -108,27 +102,27 @@ playScriptedMission [
 					];
 
 					switch (_status) do {
-						case STATUS_OK: {
+						case GRAD_MEH_STATUS_OK: {
 							_startedOrAborted = true;
 						};
-						case STATUS_ERR_ARGS: {
+						case GRAD_MEH_STATUS_ERR_ARGS: {
 							_startedOrAborted = true;
 							[_x, "Couldn't export map, because something went wrong when passing arguments."] call _reportError;
 						};
-						case STATUS_ERR_ALREADY_RUNNING: { /* Just wait and try again next cycle */ };
-						case STATUS_ERR_NOT_FOUND: {
+						case GRAD_MEH_STATUS_ERR_ALREADY_RUNNING: { /* Just wait and try again next cycle */ };
+						case GRAD_MEH_STATUS_ERR_NOT_FOUND: {
 							_startedOrAborted = true;
 							[_x, "Couldn't export map, because it wasn't found in configFile."] call _reportError;
 						};
-						case STATUS_ERR_NO_WORLD_SIZE: {
+						case GRAD_MEH_STATUS_ERR_NO_WORLD_SIZE: {
 							_startedOrAborted = true;
 							[_x, "Couldn't export map, because worldSize is missing in its config."] call _reportError;
 						};
-						case STATUS_ERR_PBO_NOT_FOUND: {
+						case GRAD_MEH_STATUS_ERR_PBO_NOT_FOUND: {
 							_startedOrAborted = true;
 							[_x, "Couldn't export map, because the PBO of WRP couldn't be found. (Most likely because it is a EBO)"] call _reportError;
 						};
-						case STATUS_ERR_PBO_POPULATING: { /* Just wait and try again next cycle */ };
+						case GRAD_MEH_STATUS_ERR_PBO_POPULATING: { /* Just wait and try again next cycle */ };
 						default {
 							_startedOrAborted = true;
 							[_x, "An unknown error occurred, while exporting the map."] call _reportError;
