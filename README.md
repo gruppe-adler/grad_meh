@@ -47,9 +47,16 @@ Gruppe Adler Map Exporter adds a script command, which is used by the UI. If you
 
 ## FAQ
 
-### How does grad_meh work?
-grad_meh utilizes the [arma file formats C++ library](https://github.com/gruppe-adler/grad_aff) to parse all map relevant files. So most of the magic is done there.  
-
 ### How long will an export take?
 How long an export takes will vary a lot depending on what exactly you want to do, with the biggest influencing factors being map size and object count.  
 But for reference: It took us about 5 minutes to export everything for Stratis.
+
+### Is there some exported data already available for download
+Yes, check out [this repository](https://github.com/gruppe-adler/meh-data). (We would appreciate if you contribute exported maps to this repository)
+
+### Can I just tab out while the export process is running?
+Yes you can tab out and use your PC otherwise while the export is running, but we recommend starting with the [`-noPause` Arma 3 startup parameter](https://community.bistudio.com/wiki/Arma_3_Startup_Parameters#Developer_Options), or Gruppe Adler MEH will not initiate the export of new maps, while tabbed out.  
+Oh... and yeah and your CPU utilization will probably be around 100% while MEH is running so have fun being productive. 😉
+
+### How does grad_meh work?
+grad_meh utilizes the [arma file formats C++ library](https://github.com/gruppe-adler/grad_aff) to parse all map relevant files. So most of the magic is done there.  
