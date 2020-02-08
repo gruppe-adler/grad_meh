@@ -1,5 +1,5 @@
-#define DIALOG_WIDTH (60 * GRID_W)
-#define DIALOG_HEIGHT (80 * GRID_H)
+#define DIALOG_WIDTH ((LOADING_STEP_W + SPACING * 2) * GRID_W)
+#define DIALOG_HEIGHT (90 * GRID_H)
 #define DIALOG_TITLE "Gruppe Adler MEH"
 #define DIALOG_ONLY_CLOSE true
 

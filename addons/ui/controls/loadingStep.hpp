@@ -1,9 +1,10 @@
 class grad_meh_loadingStep: ctrlControlsGroupNoScrollbars {
-	x = 4 * GRID_W;
+	x = 0;
 	y = (5 + 0 * LOADING_STEP_H) * GRID_H;
-	w = safezoneW;
+	w = LOADING_STEP_W * GRID_W;
 	h = LOADING_STEP_H * GRID_H;
 	idc = -1;
+	deletable = 1;
 	class Controls {
 		class done: ctrlStaticPictureKeepAspect {
 			idc = IDC_LOADINGSTEP_PICTURE;
