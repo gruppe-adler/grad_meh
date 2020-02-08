@@ -4,6 +4,7 @@ class CfgFunctions {
 			file = "\x\grad_meh\addons\ui\functions";
 			class config_onLoad {};
 			class config_onUnLoad {};
+			class done_onLoad {};
 			class done_onUnLoad {};
 			class loading_redraw {};
 			class loading_onUnLoad {};

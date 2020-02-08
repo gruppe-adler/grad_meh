@@ -49,11 +49,13 @@ private _yPos = (SPACING * GRID_H);
 } forEach _worlds;
 
 if (_allDone) then {
-	[_display] spawn {
-		params ["_display"];
+	[_display, _worlds] spawn {
+		params ["_display", "_worlds"];
 
 		private _parent = displayParent _display;
 		_display closeDisplay 1;
-		_parent createDisplay "grad_meh_done";
+		private _doneDisp = _parent createDisplay "grad_meh_done";
+		_doneDisp setVariable ["grad_meh_worlds", _worlds];
+		[_doneDisp] call (uiNamespace getVariable 'grad_meh_fnc_done_onLoad');
 	};
 };

@@ -2,7 +2,6 @@
 #define DIALOG_HEIGHT (57 * GRID_H)
 #define DIALOG_TITLE "Gruppe Adler MEH"
 #define DIALOG_ONLY_CLOSE true
-#define DIALOG_NON_SCROLLABLE true
 
 class grad_meh_done {
 	idd = -1;
@@ -10,17 +9,18 @@ class grad_meh_done {
 	movingEnable = false;
 	#include "base\start.hpp"
 	class text: ctrlStructuredText {
+		idc = IDC_DONE_TEXT;
 		x = 0 + GRID_W;
 		y = 0 + GRID_H;
 		w = QUOTE(DIALOG_WIDTH - GRID_W * 2);
 		h = QUOTE(DIALOG_HEIGHT - GRID_H * 2);
-		text = QUOTE(<t size='20 * GRID_H'><img image='\x\grad_meh\addons\ui\data\logo_ca.paa'/></t><br/>EXPORT FINISHED);
+		text = "";
 		shadow = 0;
 		class Attributes: Attributes
 		{
 			align = "center";
 			valign = "middle";
-			size = 5 * GRID_H;
+			size = 1 * GRID_H;
 		};
 	};
 	#include "base\end.hpp"
@@ -30,4 +30,3 @@ class grad_meh_done {
 #undef DIALOG_HEIGHT
 #undef DIALOG_TITLE
 #undef DIALOG_ONLY_CLOSE
-#undef DIALOG_NON_SCROLLABLE
