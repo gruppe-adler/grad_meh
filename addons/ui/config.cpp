@@ -56,3 +56,17 @@ class RscDisplayMain: RscStandardDisplay
 		};
 	};
 };
+
+class CfgMainMenuSpotlight
+{
+	class grad_meh
+	{
+		text="Gruppe Adler MEH";
+		textIsQuote=0;
+		picture="\x\grad_meh\addons\ui\data\spotlight_co.paa";
+		video="";
+		action="params ['_ctrl']; (ctrlParent _ctrl) createDisplay 'grad_meh_main';";
+		actionText="OPEN";
+		condition="true";
+	};
+};
