@@ -78,7 +78,7 @@ std::vector<fs::path> getFullPboPaths() {
     for (auto& pboPath : pboList) {
         auto path = (fs::path)pboPath;
         std::string ext(".pbo");
-        if (path.has_extension() && path.extension() == ext) {
+        if (path.has_extension() && boost::iequals(path.extension().string(), ext)) {
             pboPaths.push_back(path);
         }
     }
@@ -417,11 +417,11 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
                 rap.readRap();
                 
                 for (auto& entry : rap.classEntries) {
-                    if (entry->name == "Stage0") {
+                    if (boost::iequals(entry->name, "Stage0")) {
                         auto rapClassPtr = std::static_pointer_cast<RapClass>(entry);
 
                         for (auto& subEntry : rapClassPtr->classEntries) {
-                            if (subEntry->name == "texture") {
+                            if (boost::iequals(subEntry->name, "texture")) {
                                 auto textureStr = std::get<std::string>(std::static_pointer_cast<RapValue>(subEntry)->value);
                                 auto rvmatFilename = ((fs::path)textureStr).filename().string();
                                 if (!boost::istarts_with(rvmatFilename, prefix)) {
@@ -696,7 +696,7 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
     }
 
     auto configWorld = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
-    if (sqf::config_name(configWorld) != worldName) {
+    if (!boost::iequals(sqf::config_name(configWorld),  worldName)) {
         gs.set_script_error(iet::assertion_failed, "Couldn't find the specified world!"sv);
         return false;
     }
