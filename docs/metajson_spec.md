@@ -10,7 +10,7 @@ The following table explains each field.
 | Field | Type | Example | Description | Corresponding Config Field |
 | --- | --- | --- | --- | --- |
 | `displayName` | `string` | `"Stratis"` | Display name | [`MAP_CONFIG > description`](https://community.bistudio.com/wiki/Arma_3_CfgWorlds_Config_Reference#description) |
-| `elevationOffset` | `number` | `0.0` | Elevation offset (how much 0 in DEM is offset from 0 ASL) | [`MAP_CONFIG > elevationOffset`](https://community.bistudio.com/wiki/Arma_3_CfgWorlds_Config_Reference#elevationOffset) |
+| `elevationOffset` | `number` | `0.0` | Offset (in m) of DEM values from 0 ASL | [`MAP_CONFIG > elevationOffset`](https://community.bistudio.com/wiki/Arma_3_CfgWorlds_Config_Reference#elevationOffset) |
 | `gridOffsetX` | `number` | `0.0` | Offset (in m) of grid start from top left corner in X direction | `MAP_CONFIG > "Grid" > "offsetX"` |
 | `gridOffsetY` | `number` | `8192.0` | Offset (in m) of grid start from top left corner in Y direction | `MAP_CONFIG > "Grid" > "offsetY"` |
 | `grids` | `array` | `[]` | TODO |
