@@ -53,8 +53,8 @@ Gruppe Adler Map Exporter adds a script command, which is used by the UI. If you
 ## FAQ
 
 ### How long will an export take?
-How long an export takes will vary a lot depending on what exactly you want to do, with the biggest influencing factors being map size and object count.  
-But for reference: It took us less than five minutes to export everything for Stratis.
+How long an export takes will vary a lot depending on what exactly you want to do, with the biggest influencing factors being map size, object count and how powerful your system is.  
+But for reference: It took us less than three minutes to export everything for Stratis on a normal gaming system (i7-6700K@4.00Ghz, NVIDIA GeForce GTX 1060 6GB, 16 GB RAM).
 
 ### Is there some exported data already available for download
 Yes, check out [this repository](https://github.com/gruppe-adler/meh-data). (We would appreciate if you contribute exported maps to this repository)
