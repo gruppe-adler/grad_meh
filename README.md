@@ -19,9 +19,13 @@ Download the latest version of the mod from our [releases page](https://github.c
 - MEH cannot export maps included in `.ebo` files, because those are encrypted therefore we cannot get to the map files. 
 
 ## Output
-All exported files can be found in the `grad_meh` subdirectory of your Arma 3 installation directory.  
-  
-Each map has its own subdirectory, which structure is further explained [here](./docs/output_spec.md).
+We export the following from Arma 3 maps:
+- Elevation model
+- Preview picture
+- Satellite image
+- Vector data for all map objects / locations
+
+All exported files can be found in the `grad_meh` subdirectory of your Arma 3 installation directory. Each map has its own subdirectory, which structure is further explained [here](./docs/output_spec.md).
 
 ## Scripting API
 Gruppe Adler Map Exporter adds a script command, which is used by the UI. If you want to, you could use that scripting command for your own purposes.
