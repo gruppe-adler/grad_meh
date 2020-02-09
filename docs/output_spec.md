@@ -31,7 +31,7 @@ Includes an array of all houses. Each house has a geometry of [type polygon](htt
 The `meta.json` includes all important meta data of the map. The format of this file is further specified [here](./metajson_spec.md).  
 
 ## 5. `sat/` directory
-The `sat/` directory includes the satellite image. Because the full image can easily get over 100MB in size (and large files are always a pain in the ass to handle) it is always split in 16 tiles.  
+The `sat/` directory includes the satellite image. Because the full image can easily get over 200MB in size (and large files are always a pain in the ass to handle) it is always split in 16 tiles.  
 
 Each tile within the `sat/` directory has the following nomenclature `{col}/{row}.png` with `{col}` being the column number and `{row}` the row number of the tile. Row/column numbers start at 0 and the origin is in the top left corner of the sat-image. So the image `sat/0/0.png` is the most top left tile of the satellite image.   
 
