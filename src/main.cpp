@@ -306,8 +306,8 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
             auto outerArr = nl::json::array();
             outerArr.push_back(coordArr);
 
-            mapFeature["geometry"] = { { "type" , "Polygon" },{ "coordinates" , outerArr } };
-            mapFeature["properties"] = { "color", mapInfo4Ptr->color };
+            mapFeature["geometry"] = { { "type" , "Polygon" }, { "coordinates" , outerArr } };
+            mapFeature["properties"] = { { "color", mapInfo4Ptr->color } };
 
             house.push_back(mapFeature);
         }
