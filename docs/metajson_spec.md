@@ -4,7 +4,7 @@
 This specification outlines the structure of the `meta.json` of a map.
 
 # 2. Fields
-With `MAP_CONFIG` the [CfgWorlds](https://community.bistudio.com/wiki/Arma_3_CfgWorlds_Config_Reference) class of the map is meant ([`configFile`](https://community.bistudio.com/wiki/configFile)` >> "CfgWorlds" >> `[`worldName`](https://community.bistudio.com/wiki/worldName)).
+Inside this document the term "`MAP_CONFIG`" refers to the  [CfgWorlds](https://community.bistudio.com/wiki/Arma_3_CfgWorlds_Config_Reference) class of the examined map ([`configFile`](https://community.bistudio.com/wiki/configFile)` >> "CfgWorlds" >> `[`worldName`](https://community.bistudio.com/wiki/worldName)).
 
 | Field | Type | Example | Description |
 | --- | --- | --- | --- |
