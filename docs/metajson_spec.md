@@ -13,7 +13,7 @@ Inside this document the term "`MAP_CONFIG`" refers to the  [CfgWorlds](https://
 | `elevationOffset` | `number` | `0.0` | Offset (in m) of DEM values from 0 ASL<br>(corresponds with [`MAP_CONFIG >> "elevationOffset"`](https://community.bistudio.com/wiki/Arma_3_CfgWorlds_Config_Reference#elevationOffset)) |
 | `gridOffsetX` | `number` | `0.0` | Offset (in m) of grid origin in X direction [(1)](#Footnotes)<br>(corresponds with `MAP_CONFIG >> "Grid" >> "offsetX"`) |
 | `gridOffsetY` | `number` | `8192.0` | Offset (in m) of grid origin in Y direction [(1)](#Footnotes)<br>(corresponds with `MAP_CONFIG >> "Grid" >> "offsetY"`) |
-| `grids` | `array` | `[]` | Includes grids for different zoom levels;(<br> Has an item for every sub class of `MAP_CONFIG >> "Grid"`) |
+| `grids` | `array` | `[]` | Includes grids for different zoom levels;<br>(Has an item for every sub class of `MAP_CONFIG >> "Grid"`) |
 | `grids[x].format` | `string` | `"XY"` | General grid format; `X` will be replaced by the formatted x-value and `Y` by the formatted y-value<br>(corresponds with `MAP_CONFIG >> "Grid" >> <ZOOM> >> "format"`) |
 | `grids[x].formatX` | `string` | `"00"` | Format of x value. Each character will be replaced. /* TODO */<br>(corresponds with `MAP_CONFIG >> "Grid" >> <ZOOM> >> "formatX"`)  |
 | `grids[x].formatY` | `string` | `"00"` | Format of y value. For further info see `grids[x].formatX`.<br>(corresponds with `MAP_CONFIG >> "Grid" >> <ZOOM> >> "formatY"`) |
