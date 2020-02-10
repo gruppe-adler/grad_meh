@@ -34,5 +34,5 @@ Contrary to most coordinate systems (including the Arma 3 position coordinate sy
 
 
 #### (2)
-_(Little disclaimer: We're not completely sure if the follwoing is 100% correct. We couldn't find proper documentation for Arma 3's grid formats and extrapolated the following from just trying out a couple of formats outself)_  
+_(Little disclaimer: We're not completely sure if the follwoing is 100% correct. We couldn't find proper documentation for Arma 3's grid formats and extrapolated the following from just trying out a couple of formats ourselves. Hit us up, if you find any proper documentation!)_  
 // TODO
