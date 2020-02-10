@@ -28,11 +28,11 @@ Inside this document the term "`MAP_CONFIG`" refers to the  [CfgWorlds](https://
 
 ### Footnotes
 
-#### 1
+#### \*1
 Contrary to most coordinate systems (including the Arma 3 position coordinate system) the Arma 3 grid coordinate system has its origin in the top left corner whilst the x coordinates go from left to right and the y coordinates go from top to bottom.  
 ![](./assets/grid_coord_system.svg)
 
 
-#### 2
+#### \*2
 _(Little disclaimer: We're not completely sure if the follwoing is 100% correct. We couldn't find proper documentation for Arma 3's grid formats and extrapolated the following from just trying out a couple of formats outself)_  
 // TODO
