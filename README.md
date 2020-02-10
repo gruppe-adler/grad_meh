@@ -24,7 +24,7 @@ We export the following from Arma 3 maps:
 - Preview picture
 - Satellite image
 - Vector data for all map objects / locations
-- Any interesting meta, like display name, longitude, latitude, etc.
+- Any interesting meta data like display name, longitude, latitude, etc.
 
 All exported files can be found in the `grad_meh` subdirectory of your Arma 3 installation directory. Each map has its own subdirectory, which structure is further explained [here](./docs/output_spec.md).
 
