@@ -150,6 +150,7 @@ void writeMeta(const std::string& worldName, const int32_t& worldSize, std::file
     meta["version"] = GRAD_MEH_VERSION;
     meta["worldName"] = worldName;
     meta["worldSize"] = worldSize;
+    meta["author"] = sqf::get_text(mapConfig >> "author");
     meta["displayName"] = sqf::get_text(mapConfig >> "description");
     meta["elevationOffset"] = sqf::get_number(mapConfig >> "elevationOffset");
     meta["latitude"] = sqf::get_number(mapConfig >> "latitude");
