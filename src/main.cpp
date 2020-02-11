@@ -265,9 +265,9 @@ void writeLocations(const std::string& worldName, std::filesystem::path& basePat
 
         auto properties = nl::json();
         properties["name"] = sqf::get_text(locationEntry >> "name");
-        properties["radiusA"] = (int32_t)sqf::get_number(locationEntry >> "radiusA");
-        properties["radiusB"] = (int32_t)sqf::get_number(locationEntry >> "radiusB");
-        properties["angle"] = (int32_t)sqf::get_number(locationEntry >> "angle");
+        properties["radiusA"] = sqf::get_number(locationEntry >> "radiusA");
+        properties["radiusB"] = sqf::get_number(locationEntry >> "radiusB");
+        properties["angle"] = sqf::get_number(locationEntry >> "angle");
 
         pointFeature["properties"] = properties;
 
