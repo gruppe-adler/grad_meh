@@ -191,16 +191,14 @@ void writeDem(std::filesystem::path& basePath, grad_aff::Wrp& wrp, const int32_t
     demStringStream << "yllcorner " << 0.0 << std::endl;
     demStringStream << "cellsize " << (worldSize / wrp.mapSizeX) << std::endl; // worldSize / mapsizex
     demStringStream << "NODATA_value " << -9999;
-
-    int64_t c = 0;
-    for (int64_t i = wrp.elevation.size() - 1; i > 0; i--) {
-        if ((c % wrp.mapSizeX) == 0) {
-            demStringStream << std::endl;
-        }
-        demStringStream << wrp.elevation[i] << " ";
-        c++;
-    }
     demStringStream << std::endl;
+
+    for (int64_t y = wrp.mapSizeY - 1; y >= 0; y--) {
+        for (size_t x = 0; x < wrp.mapSizeX; x++) {
+            demStringStream << wrp.elevation[x + wrp.mapSizeX * y] << " ";
+        }
+        demStringStream << std::endl;
+    }
 
     bi::filtering_istream fis;
     fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_compression)));
@@ -300,9 +298,10 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
             mapFeature["type"] = "Feature";
 
             auto coordArr = nl::json::array();
-            for (int32_t i = 0; i < mapInfo4Ptr->bounds.size(); i += 2) {
-                coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[i], mapInfo4Ptr->bounds[i + 1] });
-            }
+            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[0], mapInfo4Ptr->bounds[1] });
+            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[2], mapInfo4Ptr->bounds[3] });
+            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[6], mapInfo4Ptr->bounds[7] });
+            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[4], mapInfo4Ptr->bounds[5] });
 
             auto outerArr = nl::json::array();
             outerArr.push_back(coordArr);
