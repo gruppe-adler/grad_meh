@@ -248,10 +248,13 @@ void writeLocations(const std::string& worldName, std::filesystem::path& basePat
     client::invoker_lock threadLock;
     auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
 
+    auto basePathGeojsonLocations = basePathGeojson / "locations";
+    if (!fs::exists(basePathGeojsonLocations)) {
+        fs::create_directories(basePathGeojsonLocations);
+    }
+
     std::map<std::string, std::shared_ptr<nl::json>> locationMap = {};
-
     auto locationArray = nl::json::array();
-
     for (auto& location : sqf::config_classes("true", (mapConfig >> "Names"))) {
         auto locationEntry = sqf::config_entry(location);
         auto type = sqf::get_text(locationEntry >> "type");
@@ -296,7 +299,7 @@ void writeLocations(const std::string& worldName, std::filesystem::path& basePat
         fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_compression)));
         fis.push(houseInStream);
 
-        std::ofstream houseOut(basePathGeojson / (pair.first + std::string(".geojson.gz")), std::ios::binary);
+        std::ofstream houseOut(basePathGeojsonLocations / (pair.first + std::string(".geojson.gz")), std::ios::binary);
         bi::copy(fis, houseOut);
         houseOut.close();
     }
@@ -335,7 +338,7 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
     fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_compression)));
     fis.push(houseInStream);
 
-    std::ofstream houseOut(basePathGeojson / "House.geojson.gz", std::ios::binary);
+    std::ofstream houseOut(basePathGeojson / "house.geojson.gz", std::ios::binary);
     bi::copy(fis, houseOut);
     houseOut.close();
 }
@@ -479,7 +482,7 @@ void writeRoads(const std::string& worldName, std::filesystem::path& basePathGeo
         feature["geometry"]["coordinates"] = coordsUpdate;
 
         int32_t jId = feature["properties"]["ID"];
-        feature.erase("properties");
+        feature["properties"].clear();
 
         auto ogrGeometry = OGRGeometryFactory::createFromGeoJson(feature["geometry"].dump().c_str());
         ogrGeometry = ogrGeometry->Buffer(roadWidthMap[jId].first * GRAD_MEH_ROAD_WITH_FACTOR);
