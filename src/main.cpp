@@ -23,6 +23,12 @@
 
 #include <nlohmann/json.hpp>
 
+#include <gdal.h>
+#include <gdal_utils.h>
+#include <gdal_priv.h>
+
+#include <ogr_geometry.h>
+
 #include <grad_aff/wrp/wrp.h>
 #include <grad_aff/paa/paa.h>
 #include <grad_aff/pbo/pbo.h>
@@ -32,7 +38,15 @@
 
 #ifdef _WIN32
 #include <Windows.h>
+#include <KnownFolders.h>
+#include <Shlobj.h>
 #include <codecvt>
+
+// https://devblogs.microsoft.com/oldnewthing/20041025-00/?p=37483
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+#define HINST_THISCOMPONENT ((HINSTANCE)&__ImageBase)
+#else
+#error Only Win is supported
 #endif // _WIN32
 
 #include "../addons/main/status_codes.hpp"
@@ -40,6 +54,7 @@
 #define GRAD_MEH_VERSION 0.1
 #define GRAD_MEH_MAX_COLOR_DIF 441.6729559300637f
 #define GRAD_MEH_OVERLAP_THRESHOLD 0.95f
+#define GRAD_MEH_ROAD_WITH_FACTOR (M_PI / 10)
 
 using namespace intercept;
 using namespace OpenImageIO_v2_1;
@@ -325,10 +340,183 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
     houseOut.close();
 }
 
+void writeRoads(const std::string& worldName, std::filesystem::path& basePathGeojson) {
+    client::invoker_lock threadLock;
+    auto roadsPath = sqf::get_text(sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName >> "newRoadsShape");
+    threadLock.unlock();
+
+    auto basePathGeojsonTemp = basePathGeojson / "temp";
+    if (!fs::exists(basePathGeojsonTemp)) {
+        fs::create_directories(basePathGeojsonTemp);
+    }
+
+    auto basePathGeojsonRoads = basePathGeojson / "roads";
+    if (!fs::exists(basePathGeojsonRoads)) {
+        fs::create_directories(basePathGeojsonRoads);
+    }
+
+    auto roadsPbo = grad_aff::Pbo::Pbo(findPboPath(roadsPath).string());
+    roadsPbo.readPbo(false);
+
+    auto roadsPathDir = ((fs::path)roadsPath).remove_filename().string();
+    if (boost::starts_with(roadsPathDir, "\\")) {
+        roadsPathDir = roadsPathDir.substr(1);
+    }
+
+    for (auto& [key, val] : roadsPbo.entries) {
+        if (boost::istarts_with((((fs::path)roadsPbo.productEntries["prefix"]) / key).string(), roadsPathDir)) {
+            roadsPbo.extractSingleFile(key, basePathGeojsonTemp, false);
+        }
+    }
+
+#ifdef _WIN32
+    char filePath[MAX_PATH + 1];
+    GetModuleFileName(HINST_THISCOMPONENT, filePath, MAX_PATH + 1);
+#endif
+
+    auto gdalPath = fs::path(filePath);
+    gdalPath = gdalPath.remove_filename();
+
+#ifdef _WIN32
+    // remove win garbage
+    gdalPath = gdalPath.string().substr(4);
+
+    // get appdata path
+    fs::path gdalLogPath;
+    PWSTR localAppdataPath = NULL;
+    if (SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &localAppdataPath) != S_OK) {
+        gdalLogPath = "grad_meh_gdal.log";
+    }
+    else {
+        gdalLogPath = (fs::path)localAppdataPath / "Arma 3" / "grad_meh_gdal.log";
+    };
+    CoTaskMemFree(localAppdataPath);
+
+#endif
+
+    CPLSetConfigOption("GDAL_DATA", gdalPath.string().c_str());
+    CPLSetConfigOption("CPL_LOG", gdalLogPath.string().c_str());
+    CPLSetConfigOption("CPL_LOG_ERRORS", "ON");
+
+    const char* pszFormat = "GeoJSON";
+    GDALDriver* poDriver;
+    char** papszMetadata;
+    GDALAllRegister();
+    poDriver = GetGDALDriverManager()->GetDriverByName(pszFormat);
+    if (poDriver == NULL) {
+        threadLock.lock();
+        sqf::diag_log("Couldn't get the GeoJSON Driver");
+        threadLock.unlock();
+        return;
+    }
+    papszMetadata = poDriver->GetMetadata();
+
+    GDALDatasetH poDatasetH = GDALOpenEx((basePathGeojsonTemp / "roads.shp").string().c_str(), GDAL_OF_VECTOR, NULL, NULL, NULL);
+
+    GDALDataset* poDataset = (GDALDataset*)poDatasetH;
+    GDALDataset* poDstDS;
+    char** papszOptions = NULL;
+
+    fs::remove(basePathGeojsonTemp / "roads.geojson");
+    poDstDS = poDriver->Create((basePathGeojsonTemp / "roads.geojson").string().c_str(),
+        poDataset->GetRasterXSize(), poDataset->GetRasterYSize(), poDataset->GetBands().size(), GDT_Byte, papszOptions);
+
+    char* options[] = { "-f", "GeoJSON", nullptr };
+
+    auto gdalOptions = GDALVectorTranslateOptionsNew(options, NULL);
+
+    int error = 0;
+    auto dataSet = GDALVectorTranslate((basePathGeojsonTemp / "roads.geojson").string().c_str(), poDstDS, 1, &poDatasetH, gdalOptions, &error);
+
+    if (error != 0) {
+        threadLock.lock();
+        sqf::diag_log("GDALVectorTranslate failed!");
+        threadLock.unlock();
+        return;
+    }
+
+    GDALClose(poDatasetH);
+    GDALClose(poDstDS);
+    GDALVectorTranslateOptionsFree(gdalOptions);
+
+    grad_aff::Rap roadConfig;
+    roadConfig.parseConfig(basePathGeojsonTemp / "roadslib.cfg");
+
+    std::map<uint32_t, std::pair<int32_t, std::string>> roadWidthMap = {};
+    for (auto& rootEntry : roadConfig.classEntries) {
+        if (rootEntry->type == 0 && boost::iequals(rootEntry->name, "RoadTypesLibrary")) {
+            for (auto& roadEntry : std::static_pointer_cast<RapClass>(rootEntry)->classEntries) {
+                if (roadEntry->type == 0 && boost::istarts_with(roadEntry->name, "Road")) {
+                    std::pair<int32_t, std::string> roadPair = {};
+                    for (auto roadValues : std::static_pointer_cast<RapClass>(roadEntry)->classEntries) {
+                        if (roadValues->type == 1 && boost::iequals(roadValues->name, "width")) {
+                            roadPair.first = std::get<int32_t>(std::static_pointer_cast<RapValue>(roadValues)->value);
+                            continue;
+                        }
+                        if (roadValues->type == 1 && boost::iequals(roadValues->name, "map")) {
+                            roadPair.second = boost::replace_all_copy(std::get<std::string>(std::static_pointer_cast<RapValue>(roadValues)->value), " ", "_");
+                            continue;
+                        }
+                    }
+                    roadWidthMap.insert({ std::stoi(roadEntry->name.substr(4)), roadPair });
+                }
+            }
+        }
+    }
+
+    std::ifstream inGeoJson(basePathGeojsonTemp / "roads.geojson");
+    nl::json j;
+    inGeoJson >> j;
+    inGeoJson.close();
+    
+    std::map<std::string, nl::json> roadMap = {};
+    for (auto& feature : j["features"]) {
+        auto coordsUpdate = nl::json::array();
+        for (auto& coords : feature["geometry"]["coordinates"]) {
+            coords[0] = (float_t)coords[0] - 200000.0f;
+            coordsUpdate.push_back(coords);
+        }
+        feature["geometry"]["coordinates"] = coordsUpdate;
+
+        int32_t jId = feature["properties"]["ID"];
+        feature.erase("properties");
+
+        auto ogrGeometry = OGRGeometryFactory::createFromGeoJson(feature["geometry"].dump().c_str());
+        ogrGeometry = ogrGeometry->Buffer(roadWidthMap[jId].first * GRAD_MEH_ROAD_WITH_FACTOR);
+
+        auto ret = ogrGeometry->exportToJson();
+        feature["geometry"] = nl::json::parse(ret);
+        CPLFree(ret);
+        OGRGeometryFactory::destroyGeometry(ogrGeometry);
+
+        auto kvp = roadMap.find(roadWidthMap[jId].second);
+        if (kvp == roadMap.end()) {
+            kvp = roadMap.insert({ roadWidthMap[jId].second, nl::json() }).first;
+        }
+        kvp->second.push_back(feature);
+    }
+    
+    for (auto& [key, value] : roadMap) {
+        std::stringstream roadInStream;
+        roadInStream << std::setw(4) << value;
+
+        bi::filtering_istream fis;
+        fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_compression)));
+        fis.push(roadInStream);
+
+        std::ofstream roadOut(basePathGeojsonRoads / (key + std::string(".geojson.gz")), std::ios::binary);
+        bi::copy(fis, roadOut);
+        roadOut.close();
+    }
+
+    fs::remove_all(basePathGeojsonTemp);
+}
+
 void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName)
 {
     writeHouses(wrp, basePathGeojson);
     writeLocations(worldName, basePathGeojson);
+    writeRoads(worldName, basePathGeojson);
 }
 
 float_t mean(std::vector<float_t>& equalities)

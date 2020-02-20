@@ -45,6 +45,9 @@ endif()
 
 find_package(OpenImageIO CONFIG REQUIRED)
 
+# GADL
+find_package(GDAL REQUIRED)
+
 FIND_PATH(GRAD_AFF_INCLUDE_DIR grad_aff/grad_aff.h HINTS ${GRAD_AFF_PATH} PATH_SUFFIXES include)
 FIND_LIBRARY(GRAD_AFF_LIB_DIR NAMES grad_aff HINTS ${GRAD_AFF_PATH} PATH_SUFFIXES lib)
 message(DBG  ${GRAD_AFF_INCLUDE_DIR})
@@ -72,11 +75,12 @@ SOURCE_GROUP("intercept" FILES ${INTERCEPT_HOST_SOURCES})
 
 include_directories(${Boost_INCLUDE_DIRS}) 
 include_directories(${GRAD_AFF_INCLUDE_DIR})
+include_directories(${GDAL_INCLUDE_DIR})
 
 add_library(${INTERCEPT_PLUGIN_NAME} SHARED ${INTERCEPT_PLUGIN_SOURCES} ${INTERCEPT_HOST_SOURCES})
 
 target_include_directories(${INTERCEPT_PLUGIN_NAME} PUBLIC ${OPENIMAGEIO_INCLUDE_DIR})
-
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${GDAL_LIBRARY})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenImageIO::OpenImageIO OpenImageIO::OpenImageIO_Util)
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${Boost_LIBRARIES})
 
@@ -99,6 +103,8 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 else()
 	set(CMAKE_CXX_FLAGS_DEBUG "/D_DEBUG /MTd /Zi /Ob0 /Od /RTC1 /MP /EHsc")
 	set(CMAKE_CXX_FLAGS_RELEASE "/MT /Zi /O2 /Ob1 /EHsc /MP") #with debug info
+	# /FORCE:MULTIPLE requrired to ignore  second definition of tiff stuff in gdal (conflicting with oiio?)
+	target_link_options(${INTERCEPT_PLUGIN_NAME} PUBLIC "/FORCE:MULTIPLE")
 	set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/OPT:REF /DEBUG:FULL") 
 endif()
 
