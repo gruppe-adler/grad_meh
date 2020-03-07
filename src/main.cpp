@@ -33,8 +33,10 @@
 #include <grad_aff/paa/paa.h>
 #include <grad_aff/pbo/pbo.h>
 #include <grad_aff/rap/rap.h>
+#include <grad_aff/p3d/odol.h>
 
 #include "findPbos.h"
+#include "SimplePoint.h"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -68,6 +70,8 @@ using iet = types::game_state::game_evaluator::evaluator_error_type;
 using SQFPar = game_value_parameter;
 
 static std::map<std::string, fs::path> entryPboMap = {};
+static std::map<std::string, std::pair<ModelInfo, ODOLv4xLod>> p3dMap = {};
+static std::vector<RoadPart> roadPartsList = {};
 
 static bool gradMehIsRunning = false;
 static bool gradMehMapIsPopulating = false;
@@ -445,6 +449,7 @@ void writeRoads(const std::string& worldName, std::filesystem::path& basePathGeo
     grad_aff::Rap roadConfig;
     roadConfig.parseConfig(basePathGeojsonTemp / "roadslib.cfg");
 
+    // Parse RoadsLib.cfg and construct with:roadType Map
     std::map<uint32_t, std::pair<int32_t, std::string>> roadWidthMap = {};
     for (auto& rootEntry : roadConfig.classEntries) {
         if (rootEntry->type == 0 && boost::iequals(rootEntry->name, "RoadTypesLibrary")) {
@@ -467,6 +472,81 @@ void writeRoads(const std::string& worldName, std::filesystem::path& basePathGeo
         }
     }
 
+    // calc additional roads
+    auto additionalRoads = std::map<std::string, std::vector<std::array<SimplePoint, 4>>>{};
+    for (auto& roadPart : roadPartsList) {
+        auto p3dPath = roadPart.p3dModel;
+        if (boost::starts_with(p3dPath, "\\")) {
+            p3dPath = p3dPath.substr(1);
+        }
+        auto res = p3dMap.find(p3dPath);
+        if (res != p3dMap.end()) {
+            auto lod = res->second.second;
+            auto mapToken = lod.tokens.find("map");
+            if (mapToken != lod.tokens.end() && mapToken->second != "hide") {
+                // http://nghiaho.com/?page_id=846
+                // Values from roation matrix, needed for the z rotation
+                auto r31 = roadPart.transformMatrix[2][0];
+                auto r32 = roadPart.transformMatrix[2][1];
+                auto r33 = roadPart.transformMatrix[2][2];
+
+                // calculate rotation in degrees
+                auto theta = std::atan2(r31 * (-1), std::sqrt(std::pow(r32,2) + std::pow(r33,2)));
+                theta = theta * (180.0f / M_PI);
+
+                // Corrected center pos
+                auto centerCorX = roadPart.transformMatrix[3][0] - lod.bCeneter[0];
+                auto centerCorY = roadPart.transformMatrix[3][2] - lod.bCeneter[2];
+                /*
+                auto rXmin = centerCorX + lod.bMin[0];
+                auto rYmin = centerCorY + lod.bMin[2];
+
+                auto rXmax = centerCorX + lod.bMax[0];
+                auto rYmax = centerCorY + lod.bMax[2];
+                */
+                // calc rotated pos of corner 
+                // https://gamedev.stackexchange.com/a/86780
+
+                /*
+                    (x_1,y_1) --- (x_2,y_2)
+                        |             |
+                        |             |
+                    (x_0,y_0) --- (x_3,y_3)
+                */
+
+
+                auto x0 = centerCorX + (lod.bMin[0] * std::cos(theta)) - (lod.bMin[2] * std::sin(theta));
+                auto y0 = centerCorY + (lod.bMax[0] * std::sin(theta)) + (lod.bMax[2] * std::cos(theta));
+
+                auto x1 = centerCorX + (lod.bMax[0] * std::cos(theta)) - (lod.bMin[2] * std::sin(theta));
+                auto y1 = centerCorY + (lod.bMax[0] * std::sin(theta)) + (lod.bMin[2] * std::cos(theta));
+
+                auto x2 = centerCorX + (lod.bMax[0] * std::cos(theta)) - (lod.bMax[2] * std::sin(theta));
+                auto y2 = centerCorY + (lod.bMin[0] * std::sin(theta)) + (lod.bMin[2] * std::cos(theta));
+
+                auto x3 = centerCorX + (lod.bMin[0] * std::cos(theta)) - (lod.bMax[2] * std::sin(theta));
+                auto y3 = centerCorY + (lod.bMin[0] * std::sin(theta)) + (lod.bMax[2] * std::cos(theta));
+
+                /*
+                auto rXmin = centerCorX + (lod.bMin[0] * std::cos(thetaZ)) - (lod.bMin[2] * std::sin(thetaZ));
+                auto rYmin = centerCorY + (lod.bMin[0] * std::sin(thetaZ)) - (lod.bMin[2] * std::cos(thetaZ));
+
+                auto rXmax = centerCorX + (lod.bMax[0] * std::cos(thetaZ)) - (lod.bMax[2] * std::sin(thetaZ));
+                auto rYmax = centerCorY + (lod.bMax[0] * std::sin(thetaZ)) - (lod.bMax[2] * std::cos(thetaZ));
+                */
+                std::array<SimplePoint, 4> rectangle = { SimplePoint(x0,y0), SimplePoint(x1,y1), SimplePoint(x2,y2),SimplePoint(x3,y3) };
+
+                auto addRoadsResult = additionalRoads.find(mapToken->second);
+                if (addRoadsResult == additionalRoads.end()) {
+                    additionalRoads.insert({ mapToken->second, {rectangle} });
+                }
+                else {
+                    addRoadsResult->second.push_back(rectangle);
+                }
+            }
+        }
+    }
+    
     std::ifstream inGeoJson(basePathGeojsonTemp / "roads.geojson");
     nl::json j;
     inGeoJson >> j;
@@ -499,7 +579,36 @@ void writeRoads(const std::string& worldName, std::filesystem::path& basePathGeo
         kvp->second.push_back(feature);
     }
     
+
+
     for (auto& [key, value] : roadMap) {
+
+        // Append additional roads
+        auto kvp = additionalRoads.find(key);
+        if (kvp != additionalRoads.end()) {
+            //for (auto& addtionalRoad : kvp->second) {
+                for (auto& rectangles : kvp->second) {
+                    nl::json addtionalRoadJson;
+
+                    nl::json geometry;
+                    geometry["type"] = "Polygon";
+                    geometry["coordinates"].push_back({ nl::json::array() });
+                    for (auto& point : rectangles) {
+                        nl::json points = nl::json::array();
+                        points.push_back(point.x);
+                        points.push_back(point.y);
+                        geometry["coordinates"][0].push_back(points);
+                    }
+
+                    addtionalRoadJson["geometry"] = geometry;
+                    addtionalRoadJson["properties"] = nl::json::object();
+                    addtionalRoadJson["type"] = "Feature";
+
+                    value.push_back(addtionalRoadJson);
+                }
+           // }
+        }
+
         std::stringstream roadInStream;
         roadInStream << std::setw(4) << value;
 
@@ -517,6 +626,41 @@ void writeRoads(const std::string& worldName, std::filesystem::path& basePathGeo
 
 void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName)
 {
+    for (auto& roadNet : wrp.roadNets) {
+        for (auto& roadPart : roadNet.roadParts) {
+            roadPartsList.push_back(roadPart);
+        }
+    }
+
+    for (auto& roadPart : roadPartsList) {
+
+        auto p3dPath = roadPart.p3dModel;
+        if (boost::starts_with(p3dPath, "\\")) {
+            p3dPath = p3dPath.substr(1);
+        }
+        if (p3dMap.find(p3dPath) == p3dMap.end()) {
+            auto pboPath = findPboPath(p3dPath);
+            grad_aff::Pbo p3dPbo(pboPath.string());
+
+            auto odol = grad_aff::Odol(p3dPbo.getEntryData(p3dPath));
+            odol.peekLodTypes();
+
+            auto geoIndex = -1;
+            for (int i = 0; i < odol.lods.size(); i++) {
+                if (odol.lods[i].lodType == LodType::GEOMETRY) {
+                    geoIndex = i;
+                }
+            }
+            if (geoIndex) {
+                auto retLod = odol.readLod(geoIndex);
+                p3dMap.insert({ p3dPath, {odol.modelInfo, retLod } });
+            }
+            else {
+                p3dMap.insert({ p3dPath, {} });
+            }
+        }
+    }
+
     writeHouses(wrp, basePathGeojson);
     writeLocations(worldName, basePathGeojson);
     writeRoads(worldName, basePathGeojson);

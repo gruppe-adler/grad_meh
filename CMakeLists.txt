@@ -1,7 +1,6 @@
 cmake_minimum_required (VERSION 3.6)
 
 #----Make changes here
-
 #This is your project name. And also the filename of the resulting plugin.
 project (grad_meh)
 
