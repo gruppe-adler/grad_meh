@@ -9,8 +9,8 @@ SOURCE_GROUP("src" FILES ${INTERCEPT_PLUGIN_SOURCES})
 #The SOURCE_GROUP string is the directory it will display as inside your visual studio.
 #Here is a example of a "utilities" subdirectory.
 
-#file(GLOB INTERCEPT_plugin_utilities_SOURCES "utilities/*.cpp" "utilities/*.hpp" "utilities/*.h")
-#SOURCE_GROUP("src/utilities" FILES ${INTERCEPT_plugin_utilities_SOURCES})
+file(GLOB INTERCEPT_plugin_dbscan_SOURCES "dbscan/*.cpp" "dbscan/*.hpp" "dbscan/*.h")
+SOURCE_GROUP("src/dbscan" FILES ${INTERCEPT_plugin_dbscan_SOURCES})
 
 #----Don't change anything below this line
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
@@ -77,18 +77,16 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${GRAD_AFF_INCLUDE_DIR})
 include_directories(${GDAL_INCLUDE_DIR})
 
-add_library(${INTERCEPT_PLUGIN_NAME} SHARED ${INTERCEPT_PLUGIN_SOURCES} ${INTERCEPT_HOST_SOURCES})
+add_library(${INTERCEPT_PLUGIN_NAME} SHARED ${INTERCEPT_PLUGIN_SOURCES} ${INTERCEPT_HOST_SOURCES} ${INTERCEPT_plugin_dbscan_SOURCES})
 
 target_include_directories(${INTERCEPT_PLUGIN_NAME} PUBLIC ${OPENIMAGEIO_INCLUDE_DIR})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${GDAL_LIBRARY})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenImageIO::OpenImageIO OpenImageIO::OpenImageIO_Util)
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${Boost_LIBRARIES})
-
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} nlohmann_json nlohmann_json::nlohmann_json)
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${LZO2_LIBRARY})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${SQUISH_LIBRARY})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${GRAD_AFF_LIB_DIR})
-
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenSSL::SSL OpenSSL::Crypto)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${INTERCEPT_INCLUDE_PATH})

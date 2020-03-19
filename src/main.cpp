@@ -17,6 +17,8 @@
 #include <algorithm>
 #include <execution>
 #include <array>
+//#include <vector>
+//#include <numeric>
 
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
@@ -38,6 +40,7 @@
 #include "findPbos.h"
 #include "SimplePoint.h"
 
+
 #ifdef _WIN32
 #include <Windows.h>
 #include <KnownFolders.h>
@@ -52,6 +55,13 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #endif // _WIN32
 
 #include "../addons/main/status_codes.hpp"
+
+//#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+//#include <CGAL/convex_hull_2.h>
+//#include <CGAL/Convex_hull_traits_adapter_2.h>
+//#include <CGAL/property_map.h>
+
+#include "dbscan/dbscan.h"
 
 #define GRAD_MEH_VERSION 0.1
 #define GRAD_MEH_MAX_COLOR_DIF 441.6729559300637f
@@ -69,9 +79,10 @@ using iet = types::game_state::game_evaluator::evaluator_error_type;
 
 using SQFPar = game_value_parameter;
 
+typedef std::array<float_t, 2> SimpleVector;
+
 static std::map<std::string, fs::path> entryPboMap = {};
 static std::map<std::string, std::pair<ModelInfo, ODOLv4xLod>> p3dMap = {};
-static std::vector<RoadPart> roadPartsList = {};
 
 static bool gradMehIsRunning = false;
 static bool gradMehMapIsPopulating = false;
@@ -160,6 +171,20 @@ void reportStatus(std::string worldName, std::string method, std::string report)
     }
     sqf::call(updateCode, auto_array<game_value> {worldName, method, report});
 }
+
+void writeGZJson(const std::string& fileName, fs::path path, nl::json& json) {
+    std::stringstream strInStream;
+    strInStream << std::setw(4) << json;
+
+    bi::filtering_istream fis;
+    fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_compression)));
+    fis.push(strInStream);
+
+    std::ofstream out(path / fileName, std::ios::binary);
+    bi::copy(fis, out);
+    out.close();
+}
+
 
 void writeMeta(const std::string& worldName, const int32_t& worldSize, std::filesystem::path& basePath)
 {
@@ -334,20 +359,75 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
             house.push_back(mapFeature);
         }
     }
-
-    std::stringstream houseInStream;
-    houseInStream << std::setw(4) << house;
-
-    bi::filtering_istream fis;
-    fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_compression)));
-    fis.push(houseInStream);
-
-    std::ofstream houseOut(basePathGeojson / "house.geojson.gz", std::ios::binary);
-    bi::copy(fis, houseOut);
-    houseOut.close();
+    writeGZJson("house.geojson.gz", basePathGeojson, house);
 }
 
-void writeRoads(const std::string& worldName, std::filesystem::path& basePathGeojson) {
+void writeObjects(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
+{
+    nl::json house = nl::json::array();
+    for (auto& mapInfo : wrp.mapInfo) {
+        if (mapInfo->mapType == 4) {
+            auto mapInfo4Ptr = std::static_pointer_cast<MapType4>(mapInfo);
+            
+            nl::json mapFeature;
+            mapFeature["type"] = "Feature";
+
+            auto coordArr = nl::json::array();
+            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[0], mapInfo4Ptr->bounds[1] });
+            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[2], mapInfo4Ptr->bounds[3] });
+            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[6], mapInfo4Ptr->bounds[7] });
+            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[4], mapInfo4Ptr->bounds[5] });
+
+            auto outerArr = nl::json::array();
+            outerArr.push_back(coordArr);
+
+            mapFeature["geometry"] = { { "type" , "Polygon" }, { "coordinates" , outerArr } };
+            mapFeature["properties"] = { { "color", mapInfo4Ptr->color }, { "id", mapInfo4Ptr->infoType} };
+
+            house.push_back(mapFeature);
+        }
+    }
+    writeGZJson("mapObject.geojson.gz", basePathGeojson, house);
+}
+
+void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesystem::path& basePathGeojson, const std::map<std::string, std::vector<std::pair<Object, ODOLv4xLod&>>>& mapObjects) {
+
+    std::vector<RoadPart> roadPartsList = {};
+    for (auto& roadNet : wrp.roadNets) {
+        for (auto& roadPart : roadNet.roadParts) {
+            roadPartsList.push_back(roadPart);
+        }
+    }
+
+    for (auto& roadPart : roadPartsList) {
+
+        auto p3dPath = roadPart.p3dModel;
+        if (boost::starts_with(p3dPath, "\\")) {
+            p3dPath = p3dPath.substr(1);
+        }
+        if (p3dMap.find(p3dPath) == p3dMap.end()) {
+            auto pboPath = findPboPath(p3dPath);
+            grad_aff::Pbo p3dPbo(pboPath.string());
+
+            auto odol = grad_aff::Odol(p3dPbo.getEntryData(p3dPath));
+            odol.peekLodTypes();
+
+            auto geoIndex = -1;
+            for (int i = 0; i < odol.lods.size(); i++) {
+                if (odol.lods[i].lodType == LodType::GEOMETRY) {
+                    geoIndex = i;
+                }
+            }
+            if (geoIndex) {
+                auto retLod = odol.readLod(geoIndex);
+                p3dMap.insert({ p3dPath, {odol.modelInfo, retLod } });
+            }
+            else {
+                p3dMap.insert({ p3dPath, {} });
+            }
+        }
+    }
+
     client::invoker_lock threadLock;
     auto roadsPath = sqf::get_text(sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName >> "newRoadsShape");
     threadLock.unlock();
@@ -473,37 +553,30 @@ void writeRoads(const std::string& worldName, std::filesystem::path& basePathGeo
     }
 
     // calc additional roads
+    std::vector<std::string> roadTypes = { "road", "mainroad", "track" };
     auto additionalRoads = std::map<std::string, std::vector<std::array<SimplePoint, 4>>>{};
-    for (auto& roadPart : roadPartsList) {
-        auto p3dPath = roadPart.p3dModel;
-        if (boost::starts_with(p3dPath, "\\")) {
-            p3dPath = p3dPath.substr(1);
-        }
-        auto res = p3dMap.find(p3dPath);
-        if (res != p3dMap.end()) {
-            auto lod = res->second.second;
-            auto mapToken = lod.tokens.find("map");
-            if (mapToken != lod.tokens.end() && mapToken->second != "hide") {
+    for (auto& roadType : roadTypes) {
+        if (mapObjects.find(roadType) != mapObjects.end()) {
+            for (auto& road : mapObjects.at(roadType)) {
+                auto correctedRoadType = roadType;
+                if (roadType == "mainroad") {
+                    // Blame Zade when this blows up
+                    correctedRoadType = "main_road";
+                }
+
                 // http://nghiaho.com/?page_id=846
                 // Values from roation matrix, needed for the z rotation
-                auto r31 = roadPart.transformMatrix[2][0];
-                auto r32 = roadPart.transformMatrix[2][1];
-                auto r33 = roadPart.transformMatrix[2][2];
+                auto r31 = road.first.transformMatrix[2][0];
+                auto r32 = road.first.transformMatrix[2][1];
+                auto r33 = road.first.transformMatrix[2][2];
 
-                // calculate rotation in degrees
-                auto theta = std::atan2(r31 * (-1), std::sqrt(std::pow(r32,2) + std::pow(r33,2)));
-                theta = theta * (180.0f / M_PI);
+                // calculate rotation in RADIANS
+                auto theta = std::atan2(-1 * r31, std::sqrt(std::pow(r32, 2) + std::pow(r33, 2)));
 
                 // Corrected center pos
-                auto centerCorX = roadPart.transformMatrix[3][0] - lod.bCeneter[0];
-                auto centerCorY = roadPart.transformMatrix[3][2] - lod.bCeneter[2];
-                /*
-                auto rXmin = centerCorX + lod.bMin[0];
-                auto rYmin = centerCorY + lod.bMin[2];
+                auto centerCorX = road.first.transformMatrix[3][0] - road.second.bCeneter[0];
+                auto centerCorY = road.first.transformMatrix[3][2] - road.second.bCeneter[2];
 
-                auto rXmax = centerCorX + lod.bMax[0];
-                auto rYmax = centerCorY + lod.bMax[2];
-                */
                 // calc rotated pos of corner 
                 // https://gamedev.stackexchange.com/a/86780
 
@@ -514,31 +587,23 @@ void writeRoads(const std::string& worldName, std::filesystem::path& basePathGeo
                     (x_0,y_0) --- (x_3,y_3)
                 */
 
+                auto x0 = centerCorX + (road.second.bMin[0] * std::cos(theta)) - (road.second.bMin[2] * std::sin(theta));
+                auto y0 = centerCorY + (road.second.bMin[0] * std::sin(theta)) + (road.second.bMin[2] * std::cos(theta));
 
-                auto x0 = centerCorX + (lod.bMin[0] * std::cos(theta)) - (lod.bMin[2] * std::sin(theta));
-                auto y0 = centerCorY + (lod.bMax[0] * std::sin(theta)) + (lod.bMax[2] * std::cos(theta));
+                auto x1 = centerCorX + (road.second.bMin[0] * std::cos(theta)) - (road.second.bMax[2] * std::sin(theta));
+                auto y1 = centerCorY + (road.second.bMin[0] * std::sin(theta)) + (road.second.bMax[2] * std::cos(theta));
 
-                auto x1 = centerCorX + (lod.bMax[0] * std::cos(theta)) - (lod.bMin[2] * std::sin(theta));
-                auto y1 = centerCorY + (lod.bMax[0] * std::sin(theta)) + (lod.bMin[2] * std::cos(theta));
+                auto x2 = centerCorX + (road.second.bMax[0] * std::cos(theta)) - (road.second.bMax[2] * std::sin(theta));
+                auto y2 = centerCorY + (road.second.bMax[0] * std::sin(theta)) + (road.second.bMax[2] * std::cos(theta));
 
-                auto x2 = centerCorX + (lod.bMax[0] * std::cos(theta)) - (lod.bMax[2] * std::sin(theta));
-                auto y2 = centerCorY + (lod.bMin[0] * std::sin(theta)) + (lod.bMin[2] * std::cos(theta));
+                auto x3 = centerCorX + (road.second.bMax[0] * std::cos(theta)) - (road.second.bMin[2] * std::sin(theta));
+                auto y3 = centerCorY + (road.second.bMax[0] * std::sin(theta)) + (road.second.bMin[2] * std::cos(theta));
 
-                auto x3 = centerCorX + (lod.bMin[0] * std::cos(theta)) - (lod.bMax[2] * std::sin(theta));
-                auto y3 = centerCorY + (lod.bMin[0] * std::sin(theta)) + (lod.bMax[2] * std::cos(theta));
-
-                /*
-                auto rXmin = centerCorX + (lod.bMin[0] * std::cos(thetaZ)) - (lod.bMin[2] * std::sin(thetaZ));
-                auto rYmin = centerCorY + (lod.bMin[0] * std::sin(thetaZ)) - (lod.bMin[2] * std::cos(thetaZ));
-
-                auto rXmax = centerCorX + (lod.bMax[0] * std::cos(thetaZ)) - (lod.bMax[2] * std::sin(thetaZ));
-                auto rYmax = centerCorY + (lod.bMax[0] * std::sin(thetaZ)) - (lod.bMax[2] * std::cos(thetaZ));
-                */
                 std::array<SimplePoint, 4> rectangle = { SimplePoint(x0,y0), SimplePoint(x1,y1), SimplePoint(x2,y2),SimplePoint(x3,y3) };
 
-                auto addRoadsResult = additionalRoads.find(mapToken->second);
+                auto addRoadsResult = additionalRoads.find(correctedRoadType);
                 if (addRoadsResult == additionalRoads.end()) {
-                    additionalRoads.insert({ mapToken->second, {rectangle} });
+                    additionalRoads.insert({ correctedRoadType, {rectangle} });
                 }
                 else {
                     addRoadsResult->second.push_back(rectangle);
@@ -546,7 +611,7 @@ void writeRoads(const std::string& worldName, std::filesystem::path& basePathGeo
             }
         }
     }
-    
+
     std::ifstream inGeoJson(basePathGeojsonTemp / "roads.geojson");
     nl::json j;
     inGeoJson >> j;
@@ -579,91 +644,265 @@ void writeRoads(const std::string& worldName, std::filesystem::path& basePathGeo
         kvp->second.push_back(feature);
     }
     
-
-
     for (auto& [key, value] : roadMap) {
-
         // Append additional roads
         auto kvp = additionalRoads.find(key);
         if (kvp != additionalRoads.end()) {
-            //for (auto& addtionalRoad : kvp->second) {
-                for (auto& rectangles : kvp->second) {
-                    nl::json addtionalRoadJson;
+            for (auto& rectangles : kvp->second) {
+                nl::json addtionalRoadJson;
 
-                    nl::json geometry;
-                    geometry["type"] = "Polygon";
-                    geometry["coordinates"].push_back({ nl::json::array() });
-                    for (auto& point : rectangles) {
-                        nl::json points = nl::json::array();
-                        points.push_back(point.x);
-                        points.push_back(point.y);
-                        geometry["coordinates"][0].push_back(points);
-                    }
-
-                    addtionalRoadJson["geometry"] = geometry;
-                    addtionalRoadJson["properties"] = nl::json::object();
-                    addtionalRoadJson["type"] = "Feature";
-
-                    value.push_back(addtionalRoadJson);
+                nl::json geometry;
+                geometry["type"] = "Polygon";
+                geometry["coordinates"].push_back({ nl::json::array() });
+                for (auto& point : rectangles) {
+                    nl::json points = nl::json::array();
+                    points.push_back(point.x);
+                    points.push_back(point.y);
+                    geometry["coordinates"][0].push_back(points);
                 }
-           // }
+
+                addtionalRoadJson["geometry"] = geometry;
+                addtionalRoadJson["properties"] = nl::json::object();
+                addtionalRoadJson["type"] = "Feature";
+
+                value.push_back(addtionalRoadJson);
+            }
         }
-
-        std::stringstream roadInStream;
-        roadInStream << std::setw(4) << value;
-
-        bi::filtering_istream fis;
-        fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_compression)));
-        fis.push(roadInStream);
-
-        std::ofstream roadOut(basePathGeojsonRoads / (key + std::string(".geojson.gz")), std::ios::binary);
-        bi::copy(fis, roadOut);
-        roadOut.close();
+        writeGZJson((key + std::string(".geojson.gz")), basePathGeojsonRoads, value);
     }
 
     fs::remove_all(basePathGeojsonTemp);
 }
 
+void writeTrees(grad_aff::Wrp& wrp, fs::path& basePathGeojson) {
+
+    auto treeLocations = nl::json();
+    for (auto& mapInfo : wrp.mapInfo) {
+        if (mapInfo->mapType == 1 && mapInfo->infoType == 0) {
+            auto mapInfo1Ptr = std::static_pointer_cast<MapType1>(mapInfo);
+
+            auto pointFeature = nl::json();
+            pointFeature["type"] = "Feature";
+
+            auto geometry = nl::json();
+            geometry["type"] = "Point";
+
+            auto posArray = nl::json::array();
+            posArray.push_back((float_t)mapInfo1Ptr->x);
+            posArray.push_back((float_t)mapInfo1Ptr->y);
+            geometry["coordinates"] = posArray;
+
+            pointFeature["geometry"] = geometry;
+            pointFeature["properties"] = nl::json::object();
+
+            treeLocations.push_back(pointFeature);
+        }
+    }
+    writeGZJson("tree.geojson.gz", basePathGeojson, treeLocations);
+}
+
+void writeForests(grad_aff::Wrp& wrp, fs::path& basePathGeojson) {
+
+    /*
+
+    DBSCAN ds(4, 20, forestPositions);
+
+    // main loop
+    ds.run();
+
+    ds.m_points;
+    */
+}
+
+float_t calculateDistance(types::auto_array<types::game_value> start, SimpleVector vector, SimpleVector point) {
+    SimpleVector vec2 = { point[0] - (float_t)start[1], point[1] - (float_t)start[1] };
+
+    auto vec2Magnitude = std::sqrt(std::pow(vec2[0], 2) + std::pow(vec2[1], 2));
+
+    auto vecProduct = vector[0] * vec2[0] + vector[1] * vec2[1];
+    auto vecMagnitude = std::sqrt(std::pow(vector[0], 2) + std::pow(vector[1], 2));
+    auto angleInRad = std::acos(vecProduct / (vecMagnitude * vec2Magnitude));
+    auto angleInDeg = angleInRad * 180 / M_PI;
+
+    if (angleInDeg >= 90) {
+        return 0;
+    }
+
+    return std::cos(angleInRad) * vec2Magnitude;
+}
+
+float_t calculateMaxDistance(types::auto_array<types::game_value> ilsPos, types::auto_array<types::game_value> ilsDirection, types::auto_array<types::game_value> taxiIn, types::auto_array<types::game_value> taxiOff) {
+    SimpleVector dirVec = { (float_t)ilsDirection[0] * -1, (float_t)ilsDirection[2] * -1 };
+
+    float_t maxDistance = 0.0f;
+
+    for (size_t i = 0; i < taxiIn.size(); i += 2) {
+        SimpleVector pos = { taxiIn[i], taxiIn[i + 1] };
+        maxDistance = std::max(maxDistance, calculateDistance(ilsPos, dirVec, pos));
+    }
+
+    for (size_t i = 0; i < taxiOff.size(); i += 2) {
+        SimpleVector pos = { taxiOff[i], taxiOff[i + 1] };
+        maxDistance = std::max(maxDistance, calculateDistance(ilsPos, dirVec, pos));
+    }
+
+    return maxDistance;
+}
+
+
+// width 40
+
+void writeRunways(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::string& worldName) {
+    client::invoker_lock threadLock;
+    auto runwayConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
+
+    auto ilsPos = sqf::get_array(runwayConfig >> "ilsPosition").to_array();
+    auto ilsDirection = sqf::get_array(runwayConfig >> "ilsDirection").to_array();
+    auto taxiIn = sqf::get_array(runwayConfig >> "ilsTaxiIn").to_array();
+    auto taxiOff = sqf::get_array(runwayConfig >> "ilsTaxiOff").to_array();
+
+    if (ilsPos.size() > 0) {
+        auto maxDist = calculateMaxDistance(ilsPos, ilsDirection, taxiIn, taxiOff);
+
+        auto endPos = SimpleVector{ (float_t)ilsPos[0] + (float_t)ilsDirection[0] * maxDist, (float_t)ilsPos[1] + (float_t)ilsDirection[2] * maxDist };
+
+        sqf::diag_log(endPos[0]);
+    }
+
+
+
+
+}
+
+void writeGenericMapTypes(fs::path& basePathGeojson, const std::vector<std::pair<Object, ODOLv4xLod&>>& objectPairs, const std::string& name) {
+    if (objectPairs.size() == 0)
+        return;
+
+    auto mapTypeLocation = nl::json();
+    for (auto& pair : objectPairs) {
+        auto pointFeature = nl::json();
+        pointFeature["type"] = "Feature";
+
+        auto geometry = nl::json();
+        geometry["type"] = "Point";
+
+        auto posArray = nl::json::array();
+        posArray.push_back(pair.first.transformMatrix[3][0]);
+        posArray.push_back(pair.first.transformMatrix[3][2]);
+        geometry["coordinates"] = posArray;
+
+        pointFeature["geometry"] = geometry;
+        pointFeature["properties"] = nl::json::object();
+
+        mapTypeLocation.push_back(pointFeature);
+    }
+    writeGZJson((name + ".geojson.gz"), basePathGeojson, mapTypeLocation);
+}
+
+
 void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName)
 {
-    for (auto& roadNet : wrp.roadNets) {
-        for (auto& roadPart : roadNet.roadParts) {
-            roadPartsList.push_back(roadPart);
+    std::vector<ODOLv4xLod> modelInfos;
+    modelInfos.reserve(wrp.models.size());
+
+    std::vector<std::pair<std::string, ODOLv4xLod>> modelMapTypes;
+    modelMapTypes.resize(wrp.models.size());
+
+    std::map<fs::path, std::shared_ptr<grad_aff::Pbo>> pboMap;
+    for (int i = 0; i < wrp.models.size(); i++) {
+        auto modelPath = wrp.models[i];
+        if (boost::starts_with(modelPath, "\\")) {
+            modelPath = modelPath.substr(1);
+        }
+
+        auto pboPath = findPboPath(modelPath);
+        std::shared_ptr<grad_aff::Pbo> pbo = {};
+        auto res = pboMap.find(pboPath);
+        if (res == pboMap.end()) {
+            auto pboPtr = std::make_shared<grad_aff::Pbo>(pboPath.string());
+            pboMap.insert({ pboPath, pboPtr });
+            pbo = pboPtr;
+        }
+        else {
+            pbo = res->second;
+        }
+
+        auto p3dData = pbo->getEntryData(modelPath);
+
+        auto odol = grad_aff::Odol(p3dData);
+        odol.readOdol(false);
+
+        odol.peekLodTypes();
+
+        auto geoIndex = -1;
+        for (int i = 0; i < odol.lods.size(); i++) {
+            if (odol.lods[i].lodType == LodType::GEOMETRY) {
+                geoIndex = i;
+            }
+        }
+
+        if (geoIndex != -1) {
+            auto retLod = odol.readLod(geoIndex);
+
+            auto findClass = retLod.tokens.find("map");
+            if (findClass != retLod.tokens.end()) {
+                modelMapTypes[i] = { findClass->second, retLod };
+            }
         }
     }
 
-    for (auto& roadPart : roadPartsList) {
+    std::map<std::string, std::vector<std::pair<Object, ODOLv4xLod&>>> objectMap = {};
+    /*
+    std::vector<Point_> forestPositions = {};
+    std::vector<Point_> forestSquarePositions = {};
+    std::vector<Point_> forestTrianglePositions = {};
+    std::vector<Point_> forestBroderPositions = {};
 
-        auto p3dPath = roadPart.p3dModel;
-        if (boost::starts_with(p3dPath, "\\")) {
-            p3dPath = p3dPath.substr(1);
+    std::vector<Point_> forestFeulStatPositions = {};
+    std::vector<Point_> forestBroderPositions = {};
+    */
+    for (auto& object : wrp.objects) {
+        auto mapType = modelMapTypes[object.modelIndex].first;
+        auto res = objectMap.find(mapType);
+        if (res != objectMap.end()) {
+            res->second.push_back({object, modelMapTypes[object.modelIndex].second});
         }
-        if (p3dMap.find(p3dPath) == p3dMap.end()) {
-            auto pboPath = findPboPath(p3dPath);
-            grad_aff::Pbo p3dPbo(pboPath.string());
+        else {
+            objectMap.insert({ mapType, {{object, modelMapTypes[object.modelIndex].second}} });
+        }
+        /*
+        if (!forestModels[index].empty()) {
+            Point_ p;
+            p.x = object.transformMatrix[3][0];
+            p.y = object.transformMatrix[3][2];
+            p.z = 0;
+            p.clusterID = UNCLASSIFIED;
+            forestPositions.push_back(p);
+        }
+        */
+    }
 
-            auto odol = grad_aff::Odol(p3dPbo.getEntryData(p3dPath));
-            odol.peekLodTypes();
+    std::vector<std::string> genericMapTypes = { "chapel", "cross", "fuelstation", "lighthouse", "rock", "shipwreck", "transmitter", "tree", "watertower" };
 
-            auto geoIndex = -1;
-            for (int i = 0; i < odol.lods.size(); i++) {
-                if (odol.lods[i].lodType == LodType::GEOMETRY) {
-                    geoIndex = i;
-                }
-            }
-            if (geoIndex) {
-                auto retLod = odol.readLod(geoIndex);
-                p3dMap.insert({ p3dPath, {odol.modelInfo, retLod } });
+    for (auto& genericMapType : genericMapTypes) {
+        if (objectMap.find(genericMapType) != objectMap.end()) {
+            if (genericMapType == "tree") {
+                writeGenericMapTypes(basePathGeojson, objectMap[genericMapType], "forest");
             }
             else {
-                p3dMap.insert({ p3dPath, {} });
+                writeGenericMapTypes(basePathGeojson, objectMap[genericMapType], genericMapType);
             }
         }
     }
-
+        
     writeHouses(wrp, basePathGeojson);
+    writeObjects(wrp, basePathGeojson);
     writeLocations(worldName, basePathGeojson);
-    writeRoads(worldName, basePathGeojson);
+    writeRoads(wrp, worldName, basePathGeojson, objectMap);
+    writeTrees(wrp, basePathGeojson);
+
+    writeRunways(wrp, basePathGeojson, worldName);
+
 }
 
 float_t mean(std::vector<float_t>& equalities)
