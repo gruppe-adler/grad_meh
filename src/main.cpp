@@ -715,8 +715,7 @@ void writeForests(grad_aff::Wrp& wrp, fs::path& basePathGeojson) {
 }
 
 float_t calculateDistance(types::auto_array<types::game_value> start, SimpleVector vector, SimpleVector point) {
-    SimpleVector vec2 = { point[0] - (float_t)start[1], point[1] - (float_t)start[1] };
-
+    SimpleVector vec2 = { point[0] - (float_t)start[0], point[1] - (float_t)start[1] };
     auto vec2Magnitude = std::sqrt(std::pow(vec2[0], 2) + std::pow(vec2[1], 2));
 
     auto vecProduct = vector[0] * vec2[0] + vector[1] * vec2[1];
@@ -749,29 +748,68 @@ float_t calculateMaxDistance(types::auto_array<types::game_value> ilsPos, types:
     return maxDistance;
 }
 
-
-// width 40
-
-void writeRunways(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::string& worldName) {
-    client::invoker_lock threadLock;
-    auto runwayConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
-
+nl::json buildRunwayPolygon(sqf::config_entry& runwayConfig) {
     auto ilsPos = sqf::get_array(runwayConfig >> "ilsPosition").to_array();
     auto ilsDirection = sqf::get_array(runwayConfig >> "ilsDirection").to_array();
     auto taxiIn = sqf::get_array(runwayConfig >> "ilsTaxiIn").to_array();
     auto taxiOff = sqf::get_array(runwayConfig >> "ilsTaxiOff").to_array();
 
-    if (ilsPos.size() > 0) {
-        auto maxDist = calculateMaxDistance(ilsPos, ilsDirection, taxiIn, taxiOff);
+    auto maxDist = calculateMaxDistance(ilsPos, ilsDirection, taxiIn, taxiOff) + 15;
 
-        auto endPos = SimpleVector{ (float_t)ilsPos[0] + (float_t)ilsDirection[0] * maxDist, (float_t)ilsPos[1] + (float_t)ilsDirection[2] * maxDist };
+    auto startPos = SimpleVector{ (float_t)ilsPos[0] + (float_t)ilsDirection[0] * 5, (float_t)ilsPos[1] + (float_t)ilsDirection[2] * 5 };
+    auto endPos = SimpleVector{ (float_t)ilsPos[0] + (float_t)ilsDirection[0] * -1 * maxDist, (float_t)ilsPos[1] + (float_t)ilsDirection[2] * -1 * maxDist };
 
-        sqf::diag_log(endPos[0]);
+    auto dx = endPos[0] - startPos[0];
+    auto dy = endPos[1] - startPos[1];
+
+    auto lineLength = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
+    dx /= lineLength;
+    dy /= lineLength;
+
+    auto expandWidth = 20;
+    auto px = expandWidth * -1 * dy;
+    auto py = expandWidth * dx;
+
+    nl::json runwaysFeature;
+    runwaysFeature["type"] = "Feature";
+
+    auto coordArr = nl::json::array();
+    coordArr.push_back({ startPos[0] + px, startPos[1] + py });
+    coordArr.push_back({ startPos[0] - px, startPos[1] - py });
+    coordArr.push_back({ endPos[0] - px, endPos[1] - py });
+    coordArr.push_back({ endPos[0] + px, endPos[1] + py });
+
+    auto outerArr = nl::json::array();
+    outerArr.push_back(coordArr);
+
+    runwaysFeature["geometry"] = { { "type" , "Polygon" }, { "coordinates" , outerArr } };
+    runwaysFeature["properties"] = nl::json::object();
+
+    return runwaysFeature;
+}
+
+// width 40
+
+void writeRunways(fs::path& basePathGeojson, const std::string& worldName) {
+    client::invoker_lock threadLock;
+    nl::json runways;
+
+    // main runway
+    auto runwayConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
+    if (sqf::get_array(runwayConfig >> "ilsPosition").to_array().size() > 0) {
+        runways.push_back(buildRunwayPolygon(runwayConfig));
     }
 
+    // secondary runways
+    // configfile >> "CfgWorlds" >> worldName >> "SecondaryAirports"
+    auto secondaryAirports = sqf::config_classes("true", runwayConfig >> "SecondaryAirports");
+    if (secondaryAirports.size() > 0) {
+        for (auto& airport : secondaryAirports) {
+            runways.push_back(buildRunwayPolygon(sqf::config_entry(airport)));
+        }
+    }
 
-
-
+    writeGZJson("runway.geojson.gz", basePathGeojson, runways);
 }
 
 void writeGenericMapTypes(fs::path& basePathGeojson, const std::vector<std::pair<Object, ODOLv4xLod&>>& objectPairs, const std::string& name) {
@@ -799,6 +837,28 @@ void writeGenericMapTypes(fs::path& basePathGeojson, const std::vector<std::pair
     writeGZJson((name + ".geojson.gz"), basePathGeojson, mapTypeLocation);
 }
 
+void writePowerlines(grad_aff::Wrp& wrp, fs::path& basePathGeojson) {
+    nl::json powerline = nl::json::array();
+
+    for (auto& mapInfo : wrp.mapInfo) {
+        if (mapInfo->mapType == 5) {
+            auto mapInfo5Ptr = std::static_pointer_cast<MapType5>(mapInfo);
+            nl::json mapFeature;
+            mapFeature["type"] = "Feature";
+
+            auto coordArr = nl::json::array();
+            coordArr.push_back({ mapInfo5Ptr->floats[0], mapInfo5Ptr->floats[1] });
+            coordArr.push_back({ mapInfo5Ptr->floats[2], mapInfo5Ptr->floats[3] });
+
+            mapFeature["geometry"] = { { "type" , "LineString" }, { "coordinates" , coordArr } };
+            mapFeature["properties"] = nl::json::object();
+
+            powerline.push_back(mapFeature);
+        }
+    }
+    if (!powerline.empty())
+        writeGZJson("powerline.geojson.gz", basePathGeojson, powerline);
+}
 
 void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName)
 {
@@ -900,8 +960,9 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
     writeLocations(worldName, basePathGeojson);
     writeRoads(wrp, worldName, basePathGeojson, objectMap);
     writeTrees(wrp, basePathGeojson);
+    writePowerlines(wrp, basePathGeojson);
 
-    writeRunways(wrp, basePathGeojson, worldName);
+    writeRunways(basePathGeojson, worldName);
 
 }
 
