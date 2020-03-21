@@ -372,22 +372,17 @@ void writeObjects(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
             nl::json mapFeature;
             mapFeature["type"] = "Feature";
 
-            auto coordArr = nl::json::array();
-            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[0], mapInfo4Ptr->bounds[1] });
-            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[2], mapInfo4Ptr->bounds[3] });
-            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[6], mapInfo4Ptr->bounds[7] });
-            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[4], mapInfo4Ptr->bounds[5] });
+            auto posArray = nl::json::array();
+            posArray.push_back(mapInfo4Ptr->bounds[0]);
+            posArray.push_back(mapInfo4Ptr->bounds[1]);
 
-            auto outerArr = nl::json::array();
-            outerArr.push_back(coordArr);
-
-            mapFeature["geometry"] = { { "type" , "Polygon" }, { "coordinates" , outerArr } };
-            mapFeature["properties"] = { { "color", mapInfo4Ptr->color }, { "id", mapInfo4Ptr->infoType} };
+            mapFeature["geometry"] = { { "type" , "Point" }, { "coordinates" , posArray } };
+            mapFeature["properties"] = { { "text", std::to_string(mapInfo4Ptr->infoType)} };
 
             house.push_back(mapFeature);
         }
     }
-    writeGZJson("mapObject.geojson.gz", basePathGeojson, house);
+    writeGZJson("debug.geojson.gz", basePathGeojson, house);
 }
 
 void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesystem::path& basePathGeojson, const std::map<std::string, std::vector<std::pair<Object, ODOLv4xLod&>>>& mapObjects) {
@@ -860,6 +855,47 @@ void writePowerlines(grad_aff::Wrp& wrp, fs::path& basePathGeojson) {
         writeGZJson("powerline.geojson.gz", basePathGeojson, powerline);
 }
 
+void writeRailrods(fs::path& basePathGeojson, const std::vector<std::pair<Object, ODOLv4xLod&>>& objectPairs, const std::string& name) {
+    if (objectPairs.size() == 0)
+        return;
+
+    nl::json railroad = nl::json::array();
+
+    for (auto& objectPair : objectPairs) {
+        nl::json railroadFeature;
+        railroadFeature["type"] = "Feature";
+
+        auto coordArr = nl::json::array();
+
+        XYZTriplet map1Triplet;
+        XYZTriplet map2Triplet;
+        for (auto& namedSelection : objectPair.second.namedSelections) {
+            if (namedSelection.selectedName == "map1") {
+                map1Triplet = objectPair.second.lodPoints[namedSelection.vertexTableIndexes[0]];
+            }
+            if (namedSelection.selectedName == "map2") {
+                map2Triplet = objectPair.second.lodPoints[namedSelection.vertexTableIndexes[0]];
+            }
+        }
+
+        auto xPos = objectPair.first.transformMatrix[3][0];
+        auto yPos = objectPair.first.transformMatrix[3][2];
+
+        // TODO
+        //map1Triplet - (xPos, yPos)
+
+        //coordArr.push_back({ mapInfo5Ptr->floats[0], mapInfo5Ptr->floats[1] });
+        //coordArr.push_back({ mapInfo5Ptr->floats[2], mapInfo5Ptr->floats[3] });
+
+        railroadFeature["geometry"] = { { "type" , "LineString" }, { "coordinates" , coordArr } };
+        railroadFeature["properties"] = nl::json::object();
+
+        railroad.push_back(railroadFeature);
+
+    }
+    writeGZJson("powerline.geojson.gz", basePathGeojson, railroad);
+}
+
 void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName)
 {
     std::vector<ODOLv4xLod> modelInfos;
@@ -895,9 +931,9 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
         odol.peekLodTypes();
 
         auto geoIndex = -1;
-        for (int i = 0; i < odol.lods.size(); i++) {
-            if (odol.lods[i].lodType == LodType::GEOMETRY) {
-                geoIndex = i;
+        for (int j = 0; j < odol.lods.size(); j++) {
+            if (odol.lods[j].lodType == LodType::GEOMETRY) {
+                geoIndex = j;
             }
         }
 
@@ -906,6 +942,16 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
 
             auto findClass = retLod.tokens.find("map");
             if (findClass != retLod.tokens.end()) {
+                if (findClass->second == "railway") {
+                    geoIndex = -1;
+                    for (int j = 0; j < odol.lods.size(); j++) {
+                        if (odol.lods[j].lodType == LodType::SPECIAL_LOD) {
+                            geoIndex = j;
+                        }
+                    }
+                    auto memLod = odol.readLod(geoIndex);
+                    modelMapTypes[i] = { findClass->second, memLod };
+                }
                 modelMapTypes[i] = { findClass->second, retLod };
             }
         }
