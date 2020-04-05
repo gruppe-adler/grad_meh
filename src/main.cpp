@@ -17,8 +17,10 @@
 #include <algorithm>
 #include <execution>
 #include <array>
-//#include <vector>
-//#include <numeric>
+#include <fstream>
+#include <iostream>
+#include <list>
+#include <vector>
 
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
@@ -40,7 +42,6 @@
 #include "findPbos.h"
 #include "SimplePoint.h"
 
-
 #ifdef _WIN32
 #include <Windows.h>
 #include <KnownFolders.h>
@@ -56,12 +57,31 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 #include "../addons/main/status_codes.hpp"
 
-//#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-//#include <CGAL/convex_hull_2.h>
-//#include <CGAL/Convex_hull_traits_adapter_2.h>
-//#include <CGAL/property_map.h>
+// PCL
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/segmentation/extract_clusters.h>
 
-#include "dbscan/dbscan.h"
+#include <pcl/ModelCoefficients.h>
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <pcl/segmentation/impl/extract_clusters.hpp>
+#include <pcl/search/organized.h>
+#include <pcl/search/impl/search.hpp>
+#include <pcl/search/impl/organized.hpp>
+
+#include <polyclipping/clipper.hpp>
 
 #define GRAD_MEH_VERSION 0.1
 #define GRAD_MEH_MAX_COLOR_DIF 441.6729559300637f
@@ -233,7 +253,7 @@ void writeDem(std::filesystem::path& basePath, grad_aff::Wrp& wrp, const int32_t
     demStringStream << "nrows " << wrp.mapSizeY << std::endl;
     demStringStream << "xllcorner " << 0.0 << std::endl;
     demStringStream << "yllcorner " << 0.0 << std::endl;
-    demStringStream << "cellsize " << (worldSize / wrp.mapSizeX) << std::endl; // worldSize / mapsizex
+    demStringStream << "cellsize " << ((float_t)worldSize / wrp.mapSizeX) << std::endl; // worldSize / mapsizex
     demStringStream << "NODATA_value " << -9999;
     demStringStream << std::endl;
 
@@ -328,7 +348,7 @@ void writeLocations(const std::string& worldName, std::filesystem::path& basePat
         fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_compression)));
         fis.push(houseInStream);
 
-        std::ofstream houseOut(basePathGeojsonLocations / (pair.first + std::string(".geojson.gz")), std::ios::binary);
+        std::ofstream houseOut(basePathGeojsonLocations / boost::to_lower_copy((pair.first + std::string(".geojson.gz"))), std::ios::binary);
         bi::copy(fis, houseOut);
         houseOut.close();
     }
@@ -354,7 +374,7 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
             outerArr.push_back(coordArr);
 
             mapFeature["geometry"] = { { "type" , "Polygon" }, { "coordinates" , outerArr } };
-            mapFeature["properties"] = { { "color", mapInfo4Ptr->color } };
+            mapFeature["properties"] = { { "color", { mapInfo4Ptr->color[2], mapInfo4Ptr->color[1], mapInfo4Ptr->color[0], mapInfo4Ptr->color[3] } } };
 
             house.push_back(mapFeature);
         }
@@ -525,15 +545,20 @@ void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesyste
     roadConfig.parseConfig(basePathGeojsonTemp / "roadslib.cfg");
 
     // Parse RoadsLib.cfg and construct with:roadType Map
-    std::map<uint32_t, std::pair<int32_t, std::string>> roadWidthMap = {};
+    std::map<uint32_t, std::pair<float_t, std::string>> roadWidthMap = {};
     for (auto& rootEntry : roadConfig.classEntries) {
         if (rootEntry->type == 0 && boost::iequals(rootEntry->name, "RoadTypesLibrary")) {
             for (auto& roadEntry : std::static_pointer_cast<RapClass>(rootEntry)->classEntries) {
                 if (roadEntry->type == 0 && boost::istarts_with(roadEntry->name, "Road")) {
-                    std::pair<int32_t, std::string> roadPair = {};
+                    std::pair<float_t, std::string> roadPair = {};
                     for (auto roadValues : std::static_pointer_cast<RapClass>(roadEntry)->classEntries) {
                         if (roadValues->type == 1 && boost::iequals(roadValues->name, "width")) {
-                            roadPair.first = std::get<int32_t>(std::static_pointer_cast<RapValue>(roadValues)->value);
+                            if (auto val = std::get_if<int32_t>(&std::static_pointer_cast<RapValue>(roadValues)->value)) {
+                                roadPair.first = (float_t)*val;
+                            }
+                            else {
+                                roadPair.first = std::get<float_t>(std::static_pointer_cast<RapValue>(roadValues)->value);
+                            }
                             continue;
                         }
                         if (roadValues->type == 1 && boost::iequals(roadValues->name, "map")) {
@@ -696,17 +721,101 @@ void writeTrees(grad_aff::Wrp& wrp, fs::path& basePathGeojson) {
     writeGZJson("tree.geojson.gz", basePathGeojson, treeLocations);
 }
 
-void writeForests(grad_aff::Wrp& wrp, fs::path& basePathGeojson) {
+void writeForests(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::vector<std::pair<Object, ODOLv4xLod&>>& objectPairs) {
+    size_t nPoints = 0;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloudPtr(new pcl::PointCloud<pcl::PointXYZ>());
+    for (auto& objectPair : objectPairs) {
+        pcl::PointXYZ point;
+        point.x = objectPair.first.transformMatrix[3][0];
+        point.y = objectPair.first.transformMatrix[3][2];
+        point.z = 0;
+        cloudPtr->push_back(point);
+        nPoints++;
+    }
 
-    /*
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+    tree->setInputCloud(cloudPtr);
 
-    DBSCAN ds(4, 20, forestPositions);
+    std::vector<pcl::PointIndices> cluster_indices;
+    pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+    ec.setClusterTolerance(15); // 15m
+    ec.setMinClusterSize(5);
+    //ec.setMaxClusterSize(25000);
+    ec.setSearchMethod(tree);
+    ec.setInputCloud(cloudPtr);
+    ec.extract(cluster_indices);
 
-    // main loop
-    ds.run();
+    pcl::PCDWriter writer;
+    ClipperLib::Paths paths;
+    paths.reserve(nPoints);
 
-    ds.m_points;
-    */
+    for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
+    {
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloudCluster(new pcl::PointCloud<pcl::PointXYZ>);
+        for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); ++pit)
+            cloudCluster->points.push_back(cloudPtr->points[*pit]); //*
+        cloudCluster->width = cloudCluster->points.size();
+        cloudCluster->height = 1;
+        cloudCluster->is_dense = true;
+
+        for (auto& point : *cloudCluster) {
+            int dd = 10;
+            ClipperLib::Path polygon;
+            polygon.push_back(ClipperLib::IntPoint(point.x - dd, point.y));
+            polygon.push_back(ClipperLib::IntPoint(point.x, point.y - dd));
+            polygon.push_back(ClipperLib::IntPoint(point.x + dd, point.y));
+            polygon.push_back(ClipperLib::IntPoint(point.x, point.y + dd));
+            paths.push_back(polygon);
+        }
+    }
+
+    ClipperLib::Paths solution;
+    ClipperLib::Clipper c;
+    c.AddPaths(paths, ClipperLib::ptSubject, true);
+    c.Execute(ClipperLib::ctUnion, solution, ClipperLib::pftNonZero);
+
+    std::vector<OGRLinearRing*> rings;
+    rings.reserve(solution.size());
+
+    for (auto& path : solution) {
+        auto ring = new OGRLinearRing();
+        for (auto& point : path) {
+            ring->addPoint(point.X, point.Y);
+        }
+        ring->closeRings();
+        rings.push_back(ring);
+    }
+
+    std::vector<OGRGeometry*> polygons;
+    polygons.reserve(rings.size());
+    for (auto& ring : rings) {
+        OGRPolygon poly;
+        poly.addRing(ring);
+        polygons.push_back(poly.Simplify(3));
+        OGRGeometryFactory::destroyGeometry(ring);
+    }
+
+    OGRMultiPolygon multiPolygon;
+    for (auto& polygon : polygons) {
+        multiPolygon.addGeometryDirectly(polygon);
+    }
+    auto s = multiPolygon.Simplify(10);
+    s = s->UnionCascaded();
+
+    nl::json forests;
+
+    nl::json forest;
+    forest["type"] = "Feature";
+
+    auto ogrJson = s->exportToJson();
+    forest["geometry"] = nl::json::parse(ogrJson);
+    CPLFree(ogrJson);
+    OGRGeometryFactory::destroyGeometry(s);
+
+    forest["properties"] = { { "color", { 11, 156, 49, 255 } } };
+    forests.push_back(forest);
+
+    writeGZJson("forest.geojson.gz", basePathGeojson, forests);
 }
 
 float_t calculateDistance(types::auto_array<types::game_value> start, SimpleVector vector, SimpleVector point) {
@@ -855,20 +964,16 @@ void writePowerlines(grad_aff::Wrp& wrp, fs::path& basePathGeojson) {
         writeGZJson("powerline.geojson.gz", basePathGeojson, powerline);
 }
 
-void writeRailrods(fs::path& basePathGeojson, const std::vector<std::pair<Object, ODOLv4xLod&>>& objectPairs, const std::string& name) {
+void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<Object, ODOLv4xLod&>>& objectPairs) {
     if (objectPairs.size() == 0)
         return;
 
-    nl::json railroad = nl::json::array();
+    nl::json railways = nl::json::array();
 
     for (auto& objectPair : objectPairs) {
-        nl::json railroadFeature;
-        railroadFeature["type"] = "Feature";
-
-        auto coordArr = nl::json::array();
-
         XYZTriplet map1Triplet;
         XYZTriplet map2Triplet;
+        std::optional<XYZTriplet> map3Triplet;
         for (auto& namedSelection : objectPair.second.namedSelections) {
             if (namedSelection.selectedName == "map1") {
                 map1Triplet = objectPair.second.lodPoints[namedSelection.vertexTableIndexes[0]];
@@ -876,24 +981,70 @@ void writeRailrods(fs::path& basePathGeojson, const std::vector<std::pair<Object
             if (namedSelection.selectedName == "map2") {
                 map2Triplet = objectPair.second.lodPoints[namedSelection.vertexTableIndexes[0]];
             }
+            if (namedSelection.selectedName == "map3") {
+                map3Triplet = objectPair.second.lodPoints[namedSelection.vertexTableIndexes[0]];
+            }
         }
 
         auto xPos = objectPair.first.transformMatrix[3][0];
         auto yPos = objectPair.first.transformMatrix[3][2];
 
-        // TODO
-        //map1Triplet - (xPos, yPos)
+        auto r11 = objectPair.first.transformMatrix[0][0];
+        auto r13 = objectPair.first.transformMatrix[0][2];
 
-        //coordArr.push_back({ mapInfo5Ptr->floats[0], mapInfo5Ptr->floats[1] });
-        //coordArr.push_back({ mapInfo5Ptr->floats[2], mapInfo5Ptr->floats[3] });
+        auto r34 = 0;
+        auto r31 = objectPair.first.transformMatrix[2][0];
+        auto r32 = objectPair.first.transformMatrix[2][1];
+        auto r33 = objectPair.first.transformMatrix[2][2];
 
-        railroadFeature["geometry"] = { { "type" , "LineString" }, { "coordinates" , coordArr } };
-        railroadFeature["properties"] = nl::json::object();
+        // calculate rotation in RADIANS
+        auto theta = std::atan2(-1 * r31, std::sqrt(std::pow(r32, 2) + std::pow(r33, 2)));
+        
+        if (r11 == 1.0f || r11 == -1.0f) {
+            theta = std::atan2(r13, r34);
+        }
+        else {
+            theta = std::atan2(-1 * r31, r11);
+        }
 
-        railroad.push_back(railroadFeature);
+        auto degree = theta * 180 / M_PI;
+
+        auto startPosX = xPos + (map1Triplet[0] * std::cos(theta)) - (map1Triplet[2] * std::sin(theta));
+        auto startPosY = yPos + (map1Triplet[0] * std::sin(theta)) + (map1Triplet[2] * std::cos(theta));
+
+        auto endPosX = xPos + (map2Triplet[0] * std::cos(theta)) - (map2Triplet[2] * std::sin(theta));
+        auto endPosY = yPos + (map2Triplet[0] * std::sin(theta)) + (map2Triplet[2] * std::cos(theta));
+        
+        nl::json railwayFeature;
+        railwayFeature["type"] = "Feature";
+
+        auto coordArr = nl::json::array();
+        coordArr.push_back({ startPosX, startPosY });
+        coordArr.push_back({ endPosX, endPosY });
+
+        railwayFeature["geometry"] = { { "type" , "LineString" }, { "coordinates" , coordArr } };
+        railwayFeature["properties"] = nl::json::object();
+
+        railways.push_back(railwayFeature);
+
+        if (map3Triplet) {
+            nl::json railwaySwitchFeature;
+            railwaySwitchFeature["type"] = "Feature";
+
+            auto coordArr = nl::json::array();
+            auto switchStartPosX = xPos + ((*map3Triplet)[0] * std::cos(theta)) - ((*map3Triplet)[2] * std::sin(theta));
+            auto switchStartPosY = yPos + ((*map3Triplet)[0] * std::sin(theta)) + ((*map3Triplet)[2] * std::cos(theta));
+
+            coordArr.push_back({ switchStartPosX, switchStartPosY });
+            coordArr.push_back({ endPosX, endPosY });
+
+            railwaySwitchFeature["geometry"] = { { "type" , "LineString" }, { "coordinates" , coordArr } };
+            railwaySwitchFeature["properties"] = nl::json::object();
+            railways.push_back(railwaySwitchFeature);
+        }
 
     }
-    writeGZJson("powerline.geojson.gz", basePathGeojson, railroad);
+    writeGZJson("railway.geojson.gz", basePathGeojson, railways);
 }
 
 void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName)
@@ -952,7 +1103,9 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
                     auto memLod = odol.readLod(geoIndex);
                     modelMapTypes[i] = { findClass->second, memLod };
                 }
-                modelMapTypes[i] = { findClass->second, retLod };
+                else {
+                    modelMapTypes[i] = { findClass->second, retLod };
+                }
             }
         }
     }
@@ -988,12 +1141,13 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
         */
     }
 
-    std::vector<std::string> genericMapTypes = { "chapel", "cross", "fuelstation", "lighthouse", "rock", "shipwreck", "transmitter", "tree", "watertower" };
+    std::vector<std::string> genericMapTypes = { "bunker", "chapel", "church", "cross", "fuelstation", "lighthouse", "rock", "shipwreck", "transmitter", "tree", "watertower",
+                                                "fortress", "fountain", "view-tower", "quay", "hospital", "busstop", "stack", "ruin", "tourism", "powersolar", "powerwave", "powerwind" };
 
     for (auto& genericMapType : genericMapTypes) {
         if (objectMap.find(genericMapType) != objectMap.end()) {
             if (genericMapType == "tree") {
-                writeGenericMapTypes(basePathGeojson, objectMap[genericMapType], "forest");
+                writeForests(wrp, basePathGeojson, objectMap["tree"]);
             }
             else {
                 writeGenericMapTypes(basePathGeojson, objectMap[genericMapType], genericMapType);
@@ -1001,6 +1155,9 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
         }
     }
         
+    if(objectMap.find("railway") != objectMap.end())
+        writeRailways(basePathGeojson, objectMap["railway"]);
+
     writeHouses(wrp, basePathGeojson);
     writeObjects(wrp, basePathGeojson);
     writeLocations(worldName, basePathGeojson);

@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 3.9)
 
 
 file(GLOB_RECURSE INTERCEPT_PLUGIN_SOURCES *.h *.hpp *.c *.cpp)
@@ -8,9 +8,6 @@ SOURCE_GROUP("src" FILES ${INTERCEPT_PLUGIN_SOURCES})
 
 #The SOURCE_GROUP string is the directory it will display as inside your visual studio.
 #Here is a example of a "utilities" subdirectory.
-
-file(GLOB INTERCEPT_plugin_dbscan_SOURCES "dbscan/*.cpp" "dbscan/*.hpp" "dbscan/*.h")
-SOURCE_GROUP("src/dbscan" FILES ${INTERCEPT_plugin_dbscan_SOURCES})
 
 #----Don't change anything below this line
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
@@ -48,10 +45,15 @@ find_package(OpenImageIO CONFIG REQUIRED)
 # GADL
 find_package(GDAL REQUIRED)
 
+#PCL
+find_package(PCL 1.3 REQUIRED)
+
+# Clipper
+FIND_PATH(CLIPPER_INCLUDE_DIR polyclipping/clipper.hpp)
+find_library(CLIPPER_LIBRARY NAMES polyclipping)
+
 FIND_PATH(GRAD_AFF_INCLUDE_DIR grad_aff/grad_aff.h HINTS ${GRAD_AFF_PATH} PATH_SUFFIXES include)
 FIND_LIBRARY(GRAD_AFF_LIB_DIR NAMES grad_aff HINTS ${GRAD_AFF_PATH} PATH_SUFFIXES lib)
-message(DBG  ${GRAD_AFF_INCLUDE_DIR})
-message(DBG  ${GRAD_AFF_LIB_DIR})
 
 #include the Intercept headers from the submodule
 set(INTERCEPT_CLIENT_PATH "${CMAKE_SOURCE_DIR}/intercept/src/client")
@@ -76,8 +78,12 @@ SOURCE_GROUP("intercept" FILES ${INTERCEPT_HOST_SOURCES})
 include_directories(${Boost_INCLUDE_DIRS}) 
 include_directories(${GRAD_AFF_INCLUDE_DIR})
 include_directories(${GDAL_INCLUDE_DIR})
+include_directories(${PCL_INCLUDE_DIRS})
+include_directories(${CLIPPER_INCLUDE_DIR})
 
-add_library(${INTERCEPT_PLUGIN_NAME} SHARED ${INTERCEPT_PLUGIN_SOURCES} ${INTERCEPT_HOST_SOURCES} ${INTERCEPT_plugin_dbscan_SOURCES})
+link_directories(${PCL_LIBRARY_DIRS})
+
+add_library(${INTERCEPT_PLUGIN_NAME} SHARED ${INTERCEPT_PLUGIN_SOURCES} ${INTERCEPT_HOST_SOURCES})
 
 target_include_directories(${INTERCEPT_PLUGIN_NAME} PUBLIC ${OPENIMAGEIO_INCLUDE_DIR})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${GDAL_LIBRARY})
@@ -88,6 +94,8 @@ target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${LZO2_LIBRARY})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${SQUISH_LIBRARY})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${GRAD_AFF_LIB_DIR})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${PCL_LIBRARIES})
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${CLIPPER_LIBRARY})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${INTERCEPT_INCLUDE_PATH})
 
