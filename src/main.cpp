@@ -584,14 +584,23 @@ void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesyste
                     correctedRoadType = "main_road";
                 }
 
-                // http://nghiaho.com/?page_id=846
-                // Values from roation matrix, needed for the z rotation
+                auto r11 = road.first.transformMatrix[0][0];
+                auto r13 = road.first.transformMatrix[0][2];
+
+                auto r34 = 0;
                 auto r31 = road.first.transformMatrix[2][0];
                 auto r32 = road.first.transformMatrix[2][1];
                 auto r33 = road.first.transformMatrix[2][2];
 
                 // calculate rotation in RADIANS
                 auto theta = std::atan2(-1 * r31, std::sqrt(std::pow(r32, 2) + std::pow(r33, 2)));
+
+                if (r11 == 1.0f || r11 == -1.0f) {
+                    theta = std::atan2(r13, r34);
+                }
+                else {
+                    theta = std::atan2(-1 * r31, r11);
+                }
 
                 // Corrected center pos
                 auto centerCorX = road.first.transformMatrix[3][0] - road.second.bCeneter[0];
@@ -721,7 +730,9 @@ void writeTrees(grad_aff::Wrp& wrp, fs::path& basePathGeojson) {
     writeGZJson("tree.geojson.gz", basePathGeojson, treeLocations);
 }
 
-void writeForests(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::vector<std::pair<Object, ODOLv4xLod&>>& objectPairs) {
+void writeArea(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::vector<std::pair<Object, ODOLv4xLod&>>& objectPairs, 
+    uint32_t epsilon, uint32_t minClusterSize, uint32_t buffer, uint32_t simplify, const std::string& name) {
+
     size_t nPoints = 0;
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloudPtr(new pcl::PointCloud<pcl::PointXYZ>());
     for (auto& objectPair : objectPairs) {
@@ -738,9 +749,8 @@ void writeForests(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::vect
 
     std::vector<pcl::PointIndices> cluster_indices;
     pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-    ec.setClusterTolerance(15); // 15m
-    ec.setMinClusterSize(5);
-    //ec.setMaxClusterSize(25000);
+    ec.setClusterTolerance(epsilon); // in m
+    ec.setMinClusterSize(minClusterSize);
     ec.setSearchMethod(tree);
     ec.setInputCloud(cloudPtr);
     ec.extract(cluster_indices);
@@ -753,18 +763,17 @@ void writeForests(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::vect
     {
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloudCluster(new pcl::PointCloud<pcl::PointXYZ>);
         for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); ++pit)
-            cloudCluster->points.push_back(cloudPtr->points[*pit]); //*
+            cloudCluster->points.push_back(cloudPtr->points[*pit]);
         cloudCluster->width = cloudCluster->points.size();
         cloudCluster->height = 1;
         cloudCluster->is_dense = true;
 
         for (auto& point : *cloudCluster) {
-            int dd = 10;
             ClipperLib::Path polygon;
-            polygon.push_back(ClipperLib::IntPoint(point.x - dd, point.y));
-            polygon.push_back(ClipperLib::IntPoint(point.x, point.y - dd));
-            polygon.push_back(ClipperLib::IntPoint(point.x + dd, point.y));
-            polygon.push_back(ClipperLib::IntPoint(point.x, point.y + dd));
+            polygon.push_back(ClipperLib::IntPoint(point.x - buffer, point.y));
+            polygon.push_back(ClipperLib::IntPoint(point.x, point.y - buffer));
+            polygon.push_back(ClipperLib::IntPoint(point.x + buffer, point.y));
+            polygon.push_back(ClipperLib::IntPoint(point.x, point.y + buffer));
             paths.push_back(polygon);
         }
     }
@@ -799,23 +808,23 @@ void writeForests(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::vect
     for (auto& polygon : polygons) {
         multiPolygon.addGeometryDirectly(polygon);
     }
-    auto s = multiPolygon.Simplify(10);
-    s = s->UnionCascaded();
+    auto multiPolygonPtr = multiPolygon.Simplify(simplify);
+    multiPolygonPtr = multiPolygonPtr->UnionCascaded();
 
     nl::json forests;
 
     nl::json forest;
     forest["type"] = "Feature";
 
-    auto ogrJson = s->exportToJson();
+    auto ogrJson = multiPolygonPtr->exportToJson();
     forest["geometry"] = nl::json::parse(ogrJson);
     CPLFree(ogrJson);
-    OGRGeometryFactory::destroyGeometry(s);
+    OGRGeometryFactory::destroyGeometry(multiPolygonPtr);
 
-    forest["properties"] = { { "color", { 11, 156, 49, 255 } } };
+    forest["properties"] = nl::json::object();
     forests.push_back(forest);
 
-    writeGZJson("forest.geojson.gz", basePathGeojson, forests);
+    writeGZJson(name + ".geojson.gz", basePathGeojson, forests);
 }
 
 float_t calculateDistance(types::auto_array<types::game_value> start, SimpleVector vector, SimpleVector point) {
@@ -1007,8 +1016,6 @@ void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<Object
             theta = std::atan2(-1 * r31, r11);
         }
 
-        auto degree = theta * 180 / M_PI;
-
         auto startPosX = xPos + (map1Triplet[0] * std::cos(theta)) - (map1Triplet[2] * std::sin(theta));
         auto startPosY = yPos + (map1Triplet[0] * std::sin(theta)) + (map1Triplet[2] * std::cos(theta));
 
@@ -1141,13 +1148,16 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
         */
     }
 
-    std::vector<std::string> genericMapTypes = { "bunker", "chapel", "church", "cross", "fuelstation", "lighthouse", "rock", "shipwreck", "transmitter", "tree", "watertower",
+    std::vector<std::string> genericMapTypes = { "bunker", "chapel", "church", "cross", "fuelstation", "lighthouse", "rock", "shipwreck", "transmitter", "tree", "rock", "watertower",
                                                 "fortress", "fountain", "view-tower", "quay", "hospital", "busstop", "stack", "ruin", "tourism", "powersolar", "powerwave", "powerwind" };
 
     for (auto& genericMapType : genericMapTypes) {
         if (objectMap.find(genericMapType) != objectMap.end()) {
             if (genericMapType == "tree") {
-                writeForests(wrp, basePathGeojson, objectMap["tree"]);
+                writeArea(wrp, basePathGeojson, objectMap["tree"], 15, 5, 10, 10, "forest");
+            }
+            else if(genericMapType == "rock") {
+                writeArea(wrp, basePathGeojson, objectMap["rock"], 10, 4, 10, 10, "rocks");
             }
             else {
                 writeGenericMapTypes(basePathGeojson, objectMap[genericMapType], genericMapType);
