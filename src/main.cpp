@@ -616,6 +616,39 @@ void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesyste
                     (x_0,y_0) --- (x_3,y_3)
                 */
 
+                XYZTriplet lb;
+                XYZTriplet le;
+                XYZTriplet pb;
+                XYZTriplet pe;
+                std::optional<XYZTriplet> map3Triplet;
+                for (auto& namedSelection : road.second.namedSelections) {
+                    if (namedSelection.selectedName == "lb") {
+                        lb = road.second.lodPoints[namedSelection.vertexTableIndexes[0]];
+                    }
+                    if (namedSelection.selectedName == "le") {
+                        le = road.second.lodPoints[namedSelection.vertexTableIndexes[0]];
+                    }
+                    if (namedSelection.selectedName == "pb") {
+                        pb = road.second.lodPoints[namedSelection.vertexTableIndexes[0]];
+                    }
+                    if (namedSelection.selectedName == "pe") {
+                        pe = road.second.lodPoints[namedSelection.vertexTableIndexes[0]];
+                    }
+                }
+
+                auto x0 = centerCorX + (lb[0] * std::cos(theta)) - (lb[2] * std::sin(theta));
+                auto y0 = centerCorY + (lb[0] * std::sin(theta)) + (lb[2] * std::cos(theta));
+
+                auto x1 = centerCorX + (le[0] * std::cos(theta)) - (le[2] * std::sin(theta));
+                auto y1 = centerCorY + (le[0] * std::sin(theta)) + (le[2] * std::cos(theta));
+
+                auto x2 = centerCorX + (pe[0] * std::cos(theta)) - (pe[2] * std::sin(theta));
+                auto y2 = centerCorY + (pe[0] * std::sin(theta)) + (pe[2] * std::cos(theta));
+
+                auto x3 = centerCorX + (pb[0] * std::cos(theta)) - (pb[2] * std::sin(theta));
+                auto y3 = centerCorY + (pb[0] * std::sin(theta)) + (pb[2] * std::cos(theta));
+
+                /*
                 auto x0 = centerCorX + (road.second.bMin[0] * std::cos(theta)) - (road.second.bMin[2] * std::sin(theta));
                 auto y0 = centerCorY + (road.second.bMin[0] * std::sin(theta)) + (road.second.bMin[2] * std::cos(theta));
 
@@ -627,6 +660,7 @@ void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesyste
 
                 auto x3 = centerCorX + (road.second.bMax[0] * std::cos(theta)) - (road.second.bMin[2] * std::sin(theta));
                 auto y3 = centerCorY + (road.second.bMax[0] * std::sin(theta)) + (road.second.bMin[2] * std::cos(theta));
+                */
 
                 std::array<SimplePoint, 4> rectangle = { SimplePoint(x0,y0), SimplePoint(x1,y1), SimplePoint(x2,y2),SimplePoint(x3,y3) };
 
@@ -1100,7 +1134,7 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
 
             auto findClass = retLod.tokens.find("map");
             if (findClass != retLod.tokens.end()) {
-                if (findClass->second == "railway") {
+                if (findClass->second == "railway" || findClass->second == "road" || findClass->second == "track" || findClass->second == "main road") {
                     geoIndex = -1;
                     for (int j = 0; j < odol.lods.size(); j++) {
                         if (odol.lods[j].lodType == LodType::SPECIAL_LOD) {
@@ -1424,7 +1458,7 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
     }
 }
 
-void extractMap(const std::string& worldName, const std::string& worldPath, const int32_t& worldSize, std::array<bool, 5>& steps) {
+void extractMap(const std::string& worldName, const std::string& worldPath, std::array<bool, 5>& steps) {
 
     auto basePath = fs::path("grad_meh") / worldName;
     auto basePathGeojson = fs::path("grad_meh") / worldName / "geojson";
@@ -1449,7 +1483,7 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
     auto wrp = grad_aff::Wrp(wrpPbo.getEntryData(worldPath));
     wrp.wrpName = worldName + ".wrp";
     try {
-        if (steps[0] || steps[1] || steps[4]) {
+        if (steps[0] || steps[1] || steps[3] || steps[4]) {
             reportStatus(worldName, "read_wrp", "running");
             wrp.readWrp();
             reportStatus(worldName, "read_wrp", "done");
@@ -1464,6 +1498,8 @@ void extractMap(const std::string& worldName, const std::string& worldPath, cons
         sqf::hint(ex.what());
         return;
     }
+
+    auto worldSize = (uint32_t)wrp.layerCellSize * wrp.layerSizeX;
 
     if (steps[0]) {
         reportStatus(worldName, "write_sat", "running");
@@ -1554,13 +1590,6 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
         return GRAD_MEH_STATUS_ERR_NOT_FOUND;
     }
 
-    // Filters out maps like CAWorld
-    auto worldSize = (int32_t)sqf::get_number(configWorld >> "mapSize");
-    if (worldSize == 0) {
-        gs.set_script_error(iet::assertion_failed, "Invalid world!"sv);
-        return GRAD_MEH_STATUS_ERR_NO_WORLD_SIZE;
-    }
-
     // check for leading /
     std::string worldPath = sqf::get_text(configWorld >> "worldName");
     if (boost::starts_with(worldPath, "\\")) {
@@ -1585,7 +1614,7 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
 
     if (!gradMehIsRunning) {
         gradMehIsRunning = true;
-        std::thread readWrpThread(extractMap, worldName, worldPath, worldSize, steps);
+        std::thread readWrpThread(extractMap, worldName, worldPath, steps);
         readWrpThread.detach();
         return GRAD_MEH_STATUS_OK;
     }
