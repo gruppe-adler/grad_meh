@@ -15,6 +15,7 @@
 
 #include <sstream>
 #include <algorithm>
+#include <array>
 #include <execution>
 #include <array>
 #include <fstream>
@@ -374,8 +375,17 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
             outerArr.push_back(coordArr);
 
             mapFeature["geometry"] = { { "type" , "Polygon" }, { "coordinates" , outerArr } };
-            mapFeature["properties"] = { { "color", { mapInfo4Ptr->color[2], mapInfo4Ptr->color[1], mapInfo4Ptr->color[0], mapInfo4Ptr->color[3] } } };
 
+            auto color = std::vector<uint8_t> { mapInfo4Ptr->color[2], mapInfo4Ptr->color[1], mapInfo4Ptr->color[0], mapInfo4Ptr->color[3] };
+
+            auto useDefaultColor = std::all_of(color.begin(), color.end(), [](uint8_t color) { return color == (uint8_t)0xFF;  });
+            if (useDefaultColor) {
+                if (mapInfo4Ptr->infoType == 4 || mapInfo4Ptr->infoType == 20 || mapInfo4Ptr->infoType == 21) {
+                    color = std::vector<uint8_t> { (uint8_t)80, (uint8_t)80, (uint8_t)80, (uint8_t)255 };
+                }
+            }
+
+            mapFeature["properties"] = { { "color", color } };
             house.push_back(mapFeature);
         }
     }
