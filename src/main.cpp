@@ -380,7 +380,7 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
 
             auto useDefaultColor = std::all_of(color.begin(), color.end(), [](uint8_t color) { return color == (uint8_t)0xFF;  });
             if (useDefaultColor) {
-                if (mapInfo4Ptr->infoType == 4 || mapInfo4Ptr->infoType == 20 || mapInfo4Ptr->infoType == 21) {
+                if (mapInfo4Ptr->infoType == 4 || mapInfo4Ptr->infoType == 20 || mapInfo4Ptr->infoType == 21 || mapInfo4Ptr->infoType == 39) {
                     color = std::vector<uint8_t> { (uint8_t)80, (uint8_t)80, (uint8_t)80, (uint8_t)255 };
                 }
             }
@@ -747,11 +747,11 @@ void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesyste
     fs::remove_all(basePathGeojsonTemp);
 }
 
-void writeTrees(grad_aff::Wrp& wrp, fs::path& basePathGeojson) {
+void writeSpecialIcons(grad_aff::Wrp& wrp, fs::path& basePathGeojson, uint32_t id, const std::string& name) {
 
     auto treeLocations = nl::json();
     for (auto& mapInfo : wrp.mapInfo) {
-        if (mapInfo->mapType == 1 && mapInfo->infoType == 0) {
+        if (mapInfo->mapType == 1 && mapInfo->infoType == id) {
             auto mapInfo1Ptr = std::static_pointer_cast<MapType1>(mapInfo);
 
             auto pointFeature = nl::json();
@@ -771,7 +771,7 @@ void writeTrees(grad_aff::Wrp& wrp, fs::path& basePathGeojson) {
             treeLocations.push_back(pointFeature);
         }
     }
-    writeGZJson("tree.geojson.gz", basePathGeojson, treeLocations);
+    writeGZJson(name + ".geojson.gz", basePathGeojson, treeLocations);
 }
 
 void writeArea(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::vector<std::pair<Object, ODOLv4xLod&>>& objectPairs, 
@@ -1216,7 +1216,9 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
     writeObjects(wrp, basePathGeojson);
     writeLocations(worldName, basePathGeojson);
     writeRoads(wrp, worldName, basePathGeojson, objectMap);
-    writeTrees(wrp, basePathGeojson);
+    writeSpecialIcons(wrp, basePathGeojson, 0, "tree");
+    writeSpecialIcons(wrp, basePathGeojson, 2, "bush");
+    writeSpecialIcons(wrp, basePathGeojson, 11, "rock");
     writePowerlines(wrp, basePathGeojson);
 
     writeRunways(basePathGeojson, worldName);
@@ -1445,9 +1447,11 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
         auto strechedBorderSizeEnd = strechedBorderSizeStart;
 
         if (!hasEqualStrechting) {
-            auto a = upperMipmap.width * maxX;
-            auto b = (upperMipmap.width - (overlap / 2)) + ((upperMipmap.width - overlap) * (maxX - 1));
-            strechedBorderSizeEnd = upperMipmap.width - (a - b);
+            auto tileSizeAfterOverlap = upperMipmap.width - overlap;
+            auto temp = (tileSizeAfterOverlap * maxX) - worldSize;
+            temp -= (overlap / 2);
+            auto lastTileRealWidth = tileSizeAfterOverlap - temp;
+            strechedBorderSizeEnd = upperMipmap.width - lastTileRealWidth;
         }
 
         dst = ImageBufAlgo::cut(dst, ROI(strechedBorderSizeStart, dst.spec().width - strechedBorderSizeEnd, strechedBorderSizeStart, dst.spec().height - strechedBorderSizeEnd));
