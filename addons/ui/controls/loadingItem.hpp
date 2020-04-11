@@ -44,7 +44,7 @@ class grad_meh_loadingItem: ctrlControlsGroupNoScrollbars {
 			class Controls: Controls {
 				class done: done {};
 				class text: text {
-					text = "Export houses";
+					text = "Export geojsons";
 				};
 			};
 		};

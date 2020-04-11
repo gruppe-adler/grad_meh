@@ -44,7 +44,7 @@ class grad_meh_config {
 				idc = IDC_CONFIG_CHECK_HOUSES;
 			};
 			class text: text {
-				text = "Export houses";
+				text = "Export geojsons";
 			};
 		};
 	};
