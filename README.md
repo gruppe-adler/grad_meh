@@ -36,7 +36,7 @@ Gruppe Adler Map Exporter adds a script command, which is used by the UI. If you
 |---|---|  
 |Description| Export given parts of given map. |
 |||
-|Syntax| **gradMehExportMap** [mapId, sat, houses, previewImg, meta, dem]
+|Syntax| **gradMehExportMap** [mapId, sat, geojson, previewImg, meta, dem]
 |||
 |Parameters|[mapId, sat, geojson, previewImg, meta, dem]: [Array](https://community.bistudio.com/wiki/Array)|
 ||mapId: [String](https://community.bistudio.com/wiki/String) - CfgWorlds class name of map|
