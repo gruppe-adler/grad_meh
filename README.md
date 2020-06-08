@@ -38,10 +38,10 @@ Gruppe Adler Map Exporter adds a script command, which is used by the UI. If you
 |||
 |Syntax| **gradMehExportMap** [mapId, sat, houses, previewImg, meta, dem]
 |||
-|Parameters|[mapId, sat, houses, previewImg, meta, dem]: [Array](https://community.bistudio.com/wiki/Array)|
+|Parameters|[mapId, sat, geojson, previewImg, meta, dem]: [Array](https://community.bistudio.com/wiki/Array)|
 ||mapId: [String](https://community.bistudio.com/wiki/String) - CfgWorlds class name of map|
 ||sat: [Boolean](https://community.bistudio.com/wiki/Boolean) - Export sat images|
-||houses: [Boolean](https://community.bistudio.com/wiki/Boolean) - Export houses positions|
+||geojson: [Boolean](https://community.bistudio.com/wiki/Boolean) - Export GeoJSONs|
 ||previewImg: [Boolean](https://community.bistudio.com/wiki/Boolean) - Export preview image|
 ||meta: [Boolean](https://community.bistudio.com/wiki/Boolean) - Export meta.json|
 ||dem: [Boolean](https://community.bistudio.com/wiki/Boolean) - Export Digital Elevation Model|
