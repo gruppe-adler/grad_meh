@@ -11,7 +11,8 @@ Check out our [FAQ](#FAQ) at the bottom of this README if you ask yourself "How?
 Download the latest version of the mod from our [releases page](https://github.com/gruppe-adler/grad_meh/releases). The only dependency, **which has to be loaded as well** is [intercept](https://steamcommunity.com/sharedfiles/filedetails/?id=1645973522). 
 
 ## Usage
-Although we would say that using `grad_meh` is intuitive and mostly self explanatory, we made <a href="https://youtu.be/VdIXrm_eUMc" target="_blank">this short video</a> that explains how to use it.
+Although we would say that using `grad_meh` is intuitive and mostly self explanatory, we made <a href="https://youtu.be/VdIXrm_eUMc" target="_blank">this short video</a> that explains how to use it.  
+**HINT**: If you have any problems, with the export not starting try disabling BattleEye
 
 ## Limitations
 - To reduce complexity we only allow one export process at a time.
