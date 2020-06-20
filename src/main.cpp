@@ -419,42 +419,6 @@ void writeObjects(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
 
 void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesystem::path& basePathGeojson, const std::map<std::string, std::vector<std::pair<Object, ODOLv4xLod&>>>& mapObjects) {
 
-    std::vector<RoadPart> roadPartsList = {};
-    for (auto& roadNet : wrp.roadNets) {
-        for (auto& roadPart : roadNet.roadParts) {
-            roadPartsList.push_back(roadPart);
-        }
-    }
-
-    for (auto& roadPart : roadPartsList) {
-
-        auto p3dPath = roadPart.p3dModel;
-        if (boost::starts_with(p3dPath, "\\")) {
-            p3dPath = p3dPath.substr(1);
-        }
-        if (p3dMap.find(p3dPath) == p3dMap.end()) {
-            auto pboPath = findPboPath(p3dPath);
-            grad_aff::Pbo p3dPbo(pboPath.string());
-
-            auto odol = grad_aff::Odol(p3dPbo.getEntryData(p3dPath));
-            odol.peekLodTypes();
-
-            auto geoIndex = -1;
-            for (int i = 0; i < odol.lods.size(); i++) {
-                if (odol.lods[i].lodType == LodType::GEOMETRY) {
-                    geoIndex = i;
-                }
-            }
-            if (geoIndex) {
-                auto retLod = odol.readLod(geoIndex);
-                p3dMap.insert({ p3dPath, {odol.modelInfo, retLod } });
-            }
-            else {
-                p3dMap.insert({ p3dPath, {} });
-            }
-        }
-    }
-
     client::invoker_lock threadLock;
     auto roadsPath = sqf::get_text(sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName >> "newRoadsShape");
     threadLock.unlock();
