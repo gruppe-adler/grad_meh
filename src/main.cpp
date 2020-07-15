@@ -288,8 +288,8 @@ void writePreviewImage(const std::string& worldName, std::filesystem::path& base
     auto pboPath = findPboPath(picturePath);
     grad_aff::Pbo prewviewPbo(pboPath.string());
 
-    auto paa = grad_aff::Paa(prewviewPbo.getEntryData(picturePath));
-    paa.readPaa();
+    auto paa = grad_aff::Paa();
+    paa.readPaa(prewviewPbo.getEntryData(picturePath));
     paa.writeImage((basePath / "preview.png").string());
 }
 
@@ -818,8 +818,25 @@ void writeArea(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::vector<
     for (auto& polygon : polygons) {
         multiPolygon.addGeometryDirectly(polygon);
     }
-    auto multiPolygonPtr = multiPolygon.Simplify(simplify);
-    multiPolygonPtr = multiPolygonPtr->UnionCascaded();
+
+    OGRGeometry* multiPolygonPtr = nullptr;
+    for (int i = simplify; i > 0; i--) {
+         auto simplifyPtr = multiPolygon.Simplify(simplify);
+         if (simplifyPtr != nullptr) {
+             multiPolygonPtr = simplifyPtr;
+             break;
+         }
+    }
+
+    if (multiPolygonPtr == nullptr) {
+        return;
+    }
+
+    //auto multiPolygonPtr = multiPolygon.Simplify(simplify);
+    auto unionPtr = multiPolygonPtr->UnionCascaded();
+    if (unionPtr != nullptr) {
+        multiPolygonPtr = unionPtr;
+    }
 
     nl::json forests;
 
@@ -919,7 +936,8 @@ void writeRunways(fs::path& basePathGeojson, const std::string& worldName) {
 
     // main runway
     auto runwayConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
-    if (sqf::get_array(runwayConfig >> "ilsPosition").to_array().size() > 0) {
+    if (sqf::get_array(runwayConfig >> "ilsPosition").to_array().size() > 0 &&
+        (float_t)sqf::get_array(runwayConfig >> "ilsPosition").to_array()[0] != 0) {
         runways.push_back(buildRunwayPolygon(runwayConfig));
     }
 
@@ -1346,15 +1364,15 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
             if (boost::iends_with(lcoPath, upperPaaPath)) {
                 auto upperPbo = grad_aff::Pbo::Pbo(findPboPath(lcoPath).string());
                 auto upperData = upperPbo.getEntryData(lcoPath);
-                auto upperPaa = grad_aff::Paa::Paa(upperData);
-                upperPaa.readPaa();
+                auto upperPaa = grad_aff::Paa::Paa();
+                upperPaa.readPaa(upperData);
                 upperMipmap = upperPaa.mipMaps[0];
             }
             if (boost::iends_with(lcoPath, lowerPaaPath)) {
                 auto lowerPbo = grad_aff::Pbo::Pbo(findPboPath(lcoPath).string());
                 auto lowerData = lowerPbo.getEntryData(lcoPath);
-                auto lowerPaa = grad_aff::Paa::Paa(lowerData);
-                lowerPaa.readPaa();
+                auto lowerPaa = grad_aff::Paa::Paa();
+                lowerPaa.readPaa(lowerData);
                 lowerMipmap = lowerPaa.mipMaps[0];
             }
         }
@@ -1366,8 +1384,8 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
         if (fillerTile != "") {
             auto fillerPbo = grad_aff::Pbo::Pbo(findPboPath(fillerTile).string());
             auto fillerData = fillerPbo.getEntryData(fillerTile);
-            auto fillerPaa = grad_aff::Paa::Paa(fillerData);
-            fillerPaa.readPaa();
+            auto fillerPaa = grad_aff::Paa::Paa();
+            fillerPaa.readPaa(fillerData);
 
             ImageBuf src(ImageSpec(fillerPaa.mipMaps[0].height, fillerPaa.mipMaps[0].height, 4, TypeDesc::UINT8), fillerPaa.mipMaps[0].data.data());
 
@@ -1391,8 +1409,8 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
                 data = pbo.getEntryData(lcoPath);
             }
 
-            auto paa = grad_aff::Paa::Paa(data);
-            paa.readPaa();
+            auto paa = grad_aff::Paa::Paa();
+            paa.readPaa(data);
 
             std::vector<std::string> splitResult = {};
             boost::split(splitResult, ((fs::path)lcoPath).filename().string(), boost::is_any_of("_"));

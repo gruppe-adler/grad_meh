@@ -38,6 +38,7 @@ FIND_LIBRARY(LZO2_LIBRARY NAMES lzo2 liblzo2)
 if("${INTERCEPT_LINK_TYPE}" STREQUAL "static")
 	add_definitions(-DOIIO_STATIC_DEFINE)
 	add_definitions(-DGRAD_AFF_STATIC_DEFINE)
+	add_definitions(-DGRAD_AFF_USE_OIIO)
 endif()
 
 find_package(OpenImageIO CONFIG REQUIRED)
