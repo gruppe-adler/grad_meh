@@ -41,6 +41,19 @@ if("${INTERCEPT_LINK_TYPE}" STREQUAL "static")
 	add_definitions(-DGRAD_AFF_USE_OIIO)
 endif()
 
+# Let OIIO find external libsquish
+set (LIBSQUISH_INCLUDES ${SQUISH_INCLUDE_DIR})
+set (LIBSQUISH_LIBRARIES ${SQUISH_LIBRARY})
+
+if (NOT TARGET Libsquish::Libsquish)
+    add_library(Libsquish::Libsquish UNKNOWN IMPORTED)
+    set_target_properties(Libsquish::Libsquish PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBSQUISH_INCLUDES}")
+
+    set_property(TARGET Libsquish::Libsquish APPEND PROPERTY
+        IMPORTED_LOCATION "${LIBSQUISH_LIBRARIES}")
+endif ()
+
 find_package(OpenImageIO CONFIG REQUIRED)
 
 # GADL
@@ -87,7 +100,7 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_library(${INTERCEPT_PLUGIN_NAME} SHARED ${INTERCEPT_PLUGIN_SOURCES} ${INTERCEPT_HOST_SOURCES})
 
 target_include_directories(${INTERCEPT_PLUGIN_NAME} PUBLIC ${OPENIMAGEIO_INCLUDE_DIR})
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${GDAL_LIBRARY})
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} GDAL::GDAL)
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenImageIO::OpenImageIO OpenImageIO::OpenImageIO_Util)
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${Boost_LIBRARIES})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} nlohmann_json nlohmann_json::nlohmann_json)
