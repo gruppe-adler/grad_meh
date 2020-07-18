@@ -132,6 +132,11 @@ void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesyste
     auto roadsPath = sqf::get_text(sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName >> "newRoadsShape");
     threadLock.unlock();
 
+    // some maps have no roads (e.g. desert)
+    if (roadsPath.empty()) {
+        return;
+    }
+
     auto basePathGeojsonTemp = basePathGeojson / "temp";
     if (!fs::exists(basePathGeojsonTemp)) {
         fs::create_directories(basePathGeojsonTemp);
