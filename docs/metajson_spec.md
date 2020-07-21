@@ -35,4 +35,9 @@ Contrary to most coordinate systems (including the Arma 3 position coordinate sy
 
 #### (2)
 _(Little disclaimer: We're not completely sure if the follwoing is 100% correct. We couldn't find proper documentation for Arma 3's grid formats and extrapolated the following from just trying out a couple of formats ourselves. Hit us up, if you find any proper documentation!)_  
-// TODO
+Looks like Arma replaces the first ten letters of the alphabet (as uppercase so A-J) as well as all numbers (0-9) with coordinates.  
+Similar to normal counting system the rightmost digit will be increased 10 times before the next digit - to the left of that - will be increased.
+The procedure for a single digit looks like this:   
+If you have a `2` the first grid (from the grid offset) will have a `2`. Arma will then count up to `9` and then go backe to `0` and count the remaining numbers (in this case`0` and `1`). The uppercase letters behave similar. It always counts from the letter within the format string up to `J` (10th letter in the alphabet) and then start from `A` again before moving to the next significant figure.  
+For example the format `"B0"` will produce the following grid coordinates:
+`B0`, `B1`, `B2`, `B3`, `B4`, `B5`, `B6`, `B7`, `B8`, `B9`, `C0`, `C1`, `C2`, ... , `J9`, `A0`, `A1`, `A2`, `A3`, `A4`, `A5`, `A6`, `A7`, `A8`, `A9` 
