@@ -800,7 +800,7 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
         writeRailways(basePathGeojson, objectMap["railway"]);
 
     writeHouses(wrp, basePathGeojson);
-    writeObjects(wrp, basePathGeojson);
+    //writeObjects(wrp, basePathGeojson);
     writeLocations(worldName, basePathGeojson);
     writeRoads(wrp, worldName, basePathGeojson, objectMap);
     writeSpecialIcons(wrp, basePathGeojson, 0, "tree");
