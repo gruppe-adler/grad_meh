@@ -7,9 +7,9 @@ This specification outlines the structure of the output directory of a single ma
 ```
 ├── dem.asc.gz
 ├── geojson
-│   ├── Hill.geojson.gz
+│   ├── bush.geojson.gz
 │   ├── [...]
-│   └── House.geojson.gz
+│   └── house.geojson.gz
 ├── meta.json
 ├── preview.png
 └── sat
@@ -22,10 +22,8 @@ This specification outlines the structure of the output directory of a single ma
 ```
 
 ## 3. `geojson/` directory
-The `geojson/` directory holds the vector data of all buildings and locations as multiple [geojson files](https://en.wikipedia.org/wiki/GeoJSON). Each file is gzipped and holds an array of [geojson features](https://tools.ietf.org/html/rfc7946#section-3.2).  
+The `geojson/` directory holds the vector data of all objects and locations as multiple gzipped [geojson files](https://en.wikipedia.org/wiki/GeoJSON). Specifics can be found [here](./geojson_spec.md).
 
-### 3.1 `geojson/House.geojson.gz`
-Includes an array of all houses. Each house has a geometry of [type polygon](https://tools.ietf.org/html/rfc7946#section-3.1.6). The `properties` field includes a 
 
 ## 4. `meta.json`
 The `meta.json` includes all important meta data of the map. The format of this file is further specified [here](./metajson_spec.md).  
