@@ -64,7 +64,7 @@ Yes, check out [this repository](https://github.com/gruppe-adler/meh-data). (We 
 
 ### Can I just tab out while the export process is running?
 Yes you can tab out while the export is running, but we recommend starting with the [`-noPause` Arma 3 startup parameter](https://community.bistudio.com/wiki/Arma_3_Startup_Parameters#Developer_Options). Otherwise MEH will not initiate the export of pending maps.  
-Oh... and yeah and your CPU utilization will probably peak around 100% while MEH is running so have fun being productive. 😉
+Oh... and yeah and your CPU utilization will probably peak around 100% while MEH is running so have fun being productive.
 
 ### How does grad_meh work?
 grad_meh utilizes the [arma file formats C++ library](https://github.com/gruppe-adler/grad_aff) to parse all map relevant files. So most of the magic is outsourced.  
