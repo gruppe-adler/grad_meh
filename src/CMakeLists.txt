@@ -31,8 +31,7 @@ set(Boost_USE_STATIC_RUNTIME ON)
 find_package(Boost 1.71.0 COMPONENTS system filesystem thread iostreams) 
 
 # LZO
-FIND_PATH(LZO2_INCLUDE_DIR lzo/lzoconf.h)
-FIND_LIBRARY(LZO2_LIBRARY NAMES lzo2 liblzo2)
+find_package(lzokay CONFIG REQUIRED)
 
 # OIIO
 if("${INTERCEPT_LINK_TYPE}" STREQUAL "static")
@@ -104,7 +103,7 @@ target_link_libraries(${INTERCEPT_PLUGIN_NAME} GDAL::GDAL)
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenImageIO::OpenImageIO OpenImageIO::OpenImageIO_Util)
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${Boost_LIBRARIES})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} nlohmann_json nlohmann_json::nlohmann_json)
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${LZO2_LIBRARY})
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} lzokay::lzokay)
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${SQUISH_LIBRARY})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${GRAD_AFF_LIB_DIR})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenSSL::SSL OpenSSL::Crypto)
