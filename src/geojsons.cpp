@@ -85,15 +85,30 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
 
             mapFeature["geometry"] = { { "type" , "Polygon" }, { "coordinates" , outerArr } };
 
-            auto color = std::vector<uint8_t>{ mapInfo4Ptr->color[2], mapInfo4Ptr->color[1], mapInfo4Ptr->color[0], mapInfo4Ptr->color[3] };
+            /**
+             * Arma takes the color from the config and modifies it to make sure none of the rgb-values is bigger
+             * than 128. This ensures that the houses have a big enough contrast against the backgorund.
+             *
+             * So we'll check if any of r/g/b is bigger than 128 and if that's the case we'll calculate the
+             * factor we need to apply to reduce it to 128. After that we'll just apply that factor to all
+             * values, round the result and then we're done.
+             *
+             * Oh yeah and the opacity / alpha value is just discarded completely. All houses have a opacity of 100%
+             *
+             * Don't ask me why they don't just multiply/overlay the config colors with a base color... Just BI things I guess
+             * - DZ
+             */
 
-            auto useDefaultColor = std::all_of(color.begin(), color.end(), [](uint8_t color) { return color == (uint8_t)0xFF;  });
-            useDefaultColor |= std::all_of(color.begin(), color.begin() + 2, [](uint8_t color) { return color == (uint8_t)0xFB;  });
-            useDefaultColor |= std::all_of(color.begin(), color.begin() + 2, [](uint8_t color) { return color == (uint8_t)0xFE;  });
-            if (useDefaultColor) {
-                //if (mapInfo4Ptr->infoType == 4 || mapInfo4Ptr->infoType == 20 || mapInfo4Ptr->infoType == 21 || mapInfo4Ptr->infoType == 39) {
-                color = std::vector<uint8_t>{ (uint8_t)80, (uint8_t)80, (uint8_t)80, (uint8_t)255 };
-                //}
+            // r, g, b
+            auto color = std::vector<uint8_t>{ mapInfo4Ptr->color[2], mapInfo4Ptr->color[1], mapInfo4Ptr->color[0] };
+
+            auto maxColorValue = std::max_element(std::begin(color), std::end(color));
+
+            // make sure every color-value is below or equal to 128
+            if (maxColorValue > 128) {
+                float_t factor = 128.0f / maxColorValue;
+
+                std::transform(color.begin(), color.end(), [](uint8_t value) { return (uint8_t)std::round(factor * value);  });
             }
 
             mapFeature["properties"] = { { "color", color } };
