@@ -105,10 +105,10 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
             auto maxColorValue = std::max_element(std::begin(color), std::end(color));
 
             // make sure every color-value is below or equal to 128
-            if (maxColorValue > 128) {
-                float_t factor = 128.0f / maxColorValue;
-
-                std::transform(color.begin(), color.end(), [](uint8_t value) { return (uint8_t)std::round(factor * value);  });
+            if (*maxColorValue > 128) {
+                float_t factor = 128.0f / *maxColorValue;
+                
+                std::transform(color.begin(), color.end(), color.begin(), [factor](uint8_t value) { return (uint8_t)std::round(factor * value);  });
             }
 
             mapFeature["properties"] = { { "color", color } };
