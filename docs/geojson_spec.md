@@ -21,7 +21,7 @@ Houses include all objects, of which the boundaries should be drawn onto the map
 - File: `house.geojson.gz`
 - Geometry-Type: [Polygon](https://tools.ietf.org/html/rfc7946#section-3.1.6)
 - Properties:
-    - `color`: Array of four integers from 0 to 255 `[red, green, blue, alpha]`
+    - `color`: Array of three integers from 0 to 255 `[red, green, blue]`
 
 ## 5. Rocks
 Rocks are [those grey areas](./assets/rocks.png) that are drawn onto the ingame map.
