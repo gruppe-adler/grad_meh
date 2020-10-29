@@ -107,7 +107,7 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
             // make sure every color-value is below or equal to 128
             if (*maxColorValue > 128) {
                 float_t factor = 128.0f / *maxColorValue;
-                
+
                 std::transform(color.begin(), color.end(), color.begin(), [factor](uint8_t value) { return (uint8_t)std::round(factor * value);  });
             }
 
