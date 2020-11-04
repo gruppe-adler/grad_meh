@@ -3,7 +3,10 @@
 ## 1. Introduction
 This specification outlines the structure of a map's `meta.json`.
 
-# 2. Fields
+# 2. JSON Schema
+A JSON Schema matching this specification can be founde [here](./meta_json_schema.json).
+
+# 3. Fields
 Inside this document the term "`MAP_CONFIG`" refers to the  [CfgWorlds](https://community.bistudio.com/wiki/Arma_3_CfgWorlds_Config_Reference) class of the examined map ([`configFile`](https://community.bistudio.com/wiki/configFile)` >> "CfgWorlds" >> `[`worldName`](https://community.bistudio.com/wiki/worldName)).
 
 | Field | Type | Example | Description |
