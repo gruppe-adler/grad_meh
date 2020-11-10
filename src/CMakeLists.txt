@@ -53,6 +53,7 @@ if (NOT TARGET Libsquish::Libsquish)
         IMPORTED_LOCATION "${LIBSQUISH_LIBRARIES}")
 endif ()
 
+find_package(OpenEXR CONFIG)
 find_package(OpenImageIO CONFIG REQUIRED)
 
 # GADL

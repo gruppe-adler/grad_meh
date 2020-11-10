@@ -79,6 +79,7 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
             coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[2], mapInfo4Ptr->bounds[3] });
             coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[6], mapInfo4Ptr->bounds[7] });
             coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[4], mapInfo4Ptr->bounds[5] });
+            coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[0], mapInfo4Ptr->bounds[1] });
 
             auto outerArr = nl::json::array();
             outerArr.push_back(coordArr);
@@ -536,6 +537,7 @@ nl::json buildRunwayPolygon(sqf::config_entry& runwayConfig) {
     coordArr.push_back({ startPos[0] - px, startPos[1] - py });
     coordArr.push_back({ endPos[0] - px, endPos[1] - py });
     coordArr.push_back({ endPos[0] + px, endPos[1] + py });
+    coordArr.push_back({ startPos[0] + px, startPos[1] + py });
 
     auto outerArr = nl::json::array();
     outerArr.push_back(coordArr);
