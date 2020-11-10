@@ -802,10 +802,10 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
     for (auto& genericMapType : genericMapTypes) {
         if (objectMap.find(genericMapType) != objectMap.end()) {
             if (genericMapType == "tree") {
-                writeArea(wrp, basePathGeojson, objectMap["tree"], 15, 5, 10, 10, "forest");
+                writeArea(wrp, basePathGeojson, objectMap["tree"], 15, 5, 10, 7, "forest");
             }
             else if (genericMapType == "rock") {
-                writeArea(wrp, basePathGeojson, objectMap["rock"], 10, 4, 10, 10, "rocks");
+                writeArea(wrp, basePathGeojson, objectMap["rock"], 10, 4, 10, 7, "rocks");
             }
             else {
                 writeGenericMapTypes(basePathGeojson, objectMap[genericMapType], genericMapType);
