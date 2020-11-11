@@ -279,13 +279,13 @@ void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesyste
     }
 
     // calc additional roads
-    std::vector<std::string> roadTypes = { "road", "mainroad", "track" };
+    std::vector<std::string> roadTypes = { "road", "main road", "track" };
     auto additionalRoads = std::map<std::string, std::vector<std::array<SimplePoint, 4>>>{};
     for (auto& roadType : roadTypes) {
         if (mapObjects.find(roadType) != mapObjects.end()) {
             for (auto& road : mapObjects.at(roadType)) {
                 auto correctedRoadType = roadType;
-                if (roadType == "mainroad") {
+                if (roadType == "mainroad" || roadType == "main road") {
                     // Blame Zade when this blows up
                     correctedRoadType = "main_road";
                 }

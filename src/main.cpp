@@ -130,6 +130,10 @@ void writePreviewImage(const std::string& worldName, std::filesystem::path& base
     std::string picturePath = sqf::get_text(mapConfig >> "pictureMap");
     threadLock.unlock();
 
+    if (picturePath.empty()) {
+        return;
+    }
+
     if (boost::starts_with(picturePath, "\\")) {
         picturePath = picturePath.substr(1);
     }
