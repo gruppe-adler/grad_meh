@@ -98,12 +98,14 @@ void writeMeta(const std::string& worldName, const int32_t& worldSize, fs::path&
 
 void writeDem(fs::path& basePath, grad_aff::Wrp& wrp, const int32_t& worldSize)
 {
+    auto cellsize = (float_t)worldSize / wrp.mapSizeX;
+
     std::stringstream demStringStream;
     demStringStream << "ncols " << wrp.mapSizeX << std::endl;
     demStringStream << "nrows " << wrp.mapSizeY << std::endl;
     demStringStream << "xllcorner " << 0.0 << std::endl;
-    demStringStream << "yllcorner " << 0.0 << std::endl;
-    demStringStream << "cellsize " << ((float_t)worldSize / wrp.mapSizeX) << std::endl; // worldSize / mapsizex
+    demStringStream << "yllcorner " << -cellsize << std::endl;
+    demStringStream << "cellsize " << cellsize << std::endl; // worldSize / mapsizex
     demStringStream << "NODATA_value " << -9999;
     demStringStream << std::endl;
 
