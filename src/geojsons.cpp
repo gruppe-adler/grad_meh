@@ -64,7 +64,7 @@ void writeLocations(const std::string& worldName, std::filesystem::path& basePat
     }
 }
 
-void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
+void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, std::vector<ODOLv4xLod> modelInfos)
 {
     nl::json house = nl::json::array();
 
@@ -112,7 +112,18 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson)
                 std::transform(color.begin(), color.end(), color.begin(), [factor](uint8_t value) { return (uint8_t)std::round(factor * value);  });
             }
 
-            mapFeature["properties"] = { { "color", color } };
+            float_t houseHeight = 0.0;
+            if (wrp.objectIdMap.find(mapInfo4Ptr->objectId) != wrp.objectIdMap.end()) {
+                auto &object = wrp.objectIdMap.at(mapInfo4Ptr->objectId);
+
+                if (object.modelIndex < wrp.models.size()) {
+                    auto &objectModel = modelInfos[object.modelIndex];
+
+                    houseHeight = objectModel.bMax[1] - objectModel.bMin[1];
+                }
+            }
+
+            mapFeature["properties"] = { { "color", color }, { "height", houseHeight } };
             house.push_back(mapFeature);
         }
     }
@@ -705,7 +716,7 @@ void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<Object
 void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName)
 {
     std::vector<ODOLv4xLod> modelInfos;
-    modelInfos.reserve(wrp.models.size());
+    modelInfos.resize(wrp.models.size());
 
     std::vector<std::pair<std::string, ODOLv4xLod>> modelMapTypes;
     modelMapTypes.resize(wrp.models.size());
@@ -757,14 +768,17 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
                     }
                     auto memLod = odol.readLod(geoIndex);
                     modelMapTypes[i] = { findClass->second, memLod };
+                    modelInfos[i] = memLod;
                 }
                 else {
                     modelMapTypes[i] = { findClass->second, retLod };
+                    modelInfos[i] = retLod;
                 }
             }
         }
     }
 
+    // mapType, [object, lod]
     std::map<std::string, std::vector<std::pair<Object, ODOLv4xLod&>>> objectMap = {};
     /*
     std::vector<Point_> forestPositions = {};
@@ -816,7 +830,7 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
     if (objectMap.find("railway") != objectMap.end())
         writeRailways(basePathGeojson, objectMap["railway"]);
 
-    writeHouses(wrp, basePathGeojson);
+    writeHouses(wrp, basePathGeojson, modelInfos);
     //writeObjects(wrp, basePathGeojson);
     writeLocations(worldName, basePathGeojson);
     writeRoads(wrp, worldName, basePathGeojson, objectMap);
