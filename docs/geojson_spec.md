@@ -22,6 +22,7 @@ Houses include all objects, of which the boundaries should be drawn onto the map
 - Geometry-Type: [Polygon](https://tools.ietf.org/html/rfc7946#section-3.1.6)
 - Properties:
     - `color`: Array of three integers from 0 to 255 `[red, green, blue]`
+    - `height`: Bounding box height in meters
 
 ## 5. Rocks
 Rocks are [those grey areas](./assets/rocks.png) that are drawn onto the ingame map.
