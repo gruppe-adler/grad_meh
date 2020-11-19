@@ -81,6 +81,18 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, std
             coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[4], mapInfo4Ptr->bounds[5] });
             coordArr.push_back(std::vector<float_t> { mapInfo4Ptr->bounds[0], mapInfo4Ptr->bounds[1] });
 
+            // make sure the winding order is counterclockwise
+            // https://stackoverflow.com/a/1165943
+            auto sum = 0.0f;
+            for (auto i = 1; i < coordArr.size(); i++) {
+                std::vector<float_t> p1 = coordArr.at(i - 1);
+                std::vector<float_t> p2 = coordArr.at(i);
+                sum += (p2[0] - p1[0]) * (p2[1] + p1[1]);
+            }
+            if (sum > 0.0f) {
+                std::reverse(std::begin(coordArr), std::end(coordArr));
+            }
+
             auto outerArr = nl::json::array();
             outerArr.push_back(coordArr);
 
