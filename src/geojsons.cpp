@@ -125,8 +125,13 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, std
             }
 
             float_t houseHeight = 0.0;
+            XYZTriplet housePos = { 0, 0, 0 };
             if (wrp.objectIdMap.find(mapInfo4Ptr->objectId) != wrp.objectIdMap.end()) {
                 auto &object = wrp.objectIdMap.at(mapInfo4Ptr->objectId);
+
+                housePos[0] = object.transformMatrix[3][0];
+                housePos[1] = object.transformMatrix[3][2];
+                housePos[2] = object.transformMatrix[3][1];
 
                 if (object.modelIndex < wrp.models.size()) {
                     auto &objectModel = modelInfos[object.modelIndex];
@@ -135,7 +140,7 @@ void writeHouses(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, std
                 }
             }
 
-            mapFeature["properties"] = { { "color", color }, { "height", houseHeight } };
+            mapFeature["properties"] = { { "color", color }, { "height", houseHeight }, { "position", housePos } };
             house.push_back(mapFeature);
         }
     }
