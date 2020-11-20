@@ -23,6 +23,7 @@ Houses include all objects, of which the boundaries should be drawn onto the map
 - Properties:
     - `color`: Array of three integers from 0 to 255 `[red, green, blue]`
     - `height`: Bounding box height in meters
+    - `position`: Position in x,y,z format
 
 ## 5. Rocks
 Rocks are [those grey areas](./assets/rocks.png) that are drawn onto the ingame map.
