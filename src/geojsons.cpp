@@ -541,6 +541,10 @@ nl::json buildRunwayPolygon(sqf::config_entry& runwayConfig) {
     auto taxiIn = sqf::get_array(runwayConfig >> "ilsTaxiIn").to_array();
     auto taxiOff = sqf::get_array(runwayConfig >> "ilsTaxiOff").to_array();
 
+    if (taxiIn.empty() && taxiOff.empty()) {
+        return nl::json();
+    }
+
     auto maxDist = calculateMaxDistance(ilsPos, ilsDirection, taxiIn, taxiOff) + 15;
 
     auto startPos = SimpleVector{ (float_t)ilsPos[0] + (float_t)ilsDirection[0] * 5, (float_t)ilsPos[1] + (float_t)ilsDirection[2] * 5 };
@@ -596,6 +600,10 @@ void writeRunways(fs::path& basePathGeojson, const std::string& worldName) {
         for (auto& airport : secondaryAirports) {
             runways.push_back(buildRunwayPolygon(sqf::config_entry(airport)));
         }
+    }
+
+    if (std::all_of(runways.begin(), runways.end(), [](nl::json j) { return j.empty(); })) {
+        return;
     }
 
     writeGZJson("runway.geojson.gz", basePathGeojson, runways);
