@@ -426,13 +426,13 @@ void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesyste
         int32_t jId = feature["properties"]["ID"];
         feature["properties"].clear();
 
-        auto ogrGeometry = OGRGeometryFactory::createFromGeoJson(feature["geometry"].dump().c_str());
-        ogrGeometry = ogrGeometry->Buffer(roadWidthMap[jId].first * GRAD_MEH_ROAD_WITH_FACTOR);
+        //auto ogrGeometry = OGRGeometryFactory::createFromGeoJson(feature["geometry"].dump().c_str());
+        //ogrGeometry = ogrGeometry->Buffer(roadWidthMap[jId].first * GRAD_MEH_ROAD_WITH_FACTOR);
 
-        auto ret = ogrGeometry->exportToJson();
-        feature["geometry"] = nl::json::parse(ret);
-        CPLFree(ret);
-        OGRGeometryFactory::destroyGeometry(ogrGeometry);
+        //auto ret = ogrGeometry->exportToJson();
+        //feature["geometry"] = nl::json::parse(ret);
+        //CPLFree(ret);
+        //OGRGeometryFactory::destroyGeometry(ogrGeometry);
 
         auto kvp = roadMap.find(roadWidthMap[jId].second);
         if (kvp == roadMap.end()) {
@@ -441,6 +441,38 @@ void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesyste
         kvp->second.push_back(feature);
     }
 
+    // separate roads into main_road, track, etc.
+    for (auto& [key, value] : roadMap) {
+        writeGZJson((key + std::string(".geojson.gz")), basePathGeojsonRoads, value);
+    }
+
+    for (auto& [key, value] : additionalRoads) {
+        nl::json bridge;
+
+        for (auto& rectangles : value) {
+            nl::json addtionalRoadJson;
+
+            nl::json geometry;
+            geometry["type"] = "Polygon";
+            geometry["coordinates"].push_back({ nl::json::array() });
+            for (auto& point : rectangles) {
+                nl::json points = nl::json::array();
+                points.push_back(point.x);
+                points.push_back(point.y);
+                geometry["coordinates"][0].push_back(points);
+            }
+
+            addtionalRoadJson["geometry"] = geometry;
+            addtionalRoadJson["properties"] = nl::json::object();
+            addtionalRoadJson["type"] = "Feature";
+
+            bridge.push_back(addtionalRoadJson);
+        }
+
+        writeGZJson((key + std::string("-bridge.geojson.gz")), basePathGeojsonRoads, bridge);
+    }
+
+    /*
     for (auto& [key, value] : roadMap) {
         // Append additional roads
         auto kvp = additionalRoads.find(key);
@@ -467,7 +499,9 @@ void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesyste
         }
         writeGZJson((key + std::string(".geojson.gz")), basePathGeojsonRoads, value);
     }
+    */
 
+    // Remove temp dir
     fs::remove_all(basePathGeojsonTemp);
 }
 
