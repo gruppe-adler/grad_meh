@@ -67,4 +67,4 @@ Yes you can tab out while the export is running, but we recommend starting with 
 Oh... and yeah and your CPU utilization will probably peak around 100% while MEH is running so have fun being productive.
 
 ### How does grad_meh work?
-grad_meh utilizes the [arma file formats C++ library](https://github.com/gruppe-adler/grad_aff) to parse all map relevant files. So most of the magic is outsourced.  
+grad_meh utilizes [our arma file formats C++ library](https://github.com/gruppe-adler/grad_aff) to parse all map relevant files. So most of the magic is outsourced.  
