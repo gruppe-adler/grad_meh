@@ -1,11 +1,12 @@
-`geojson/` directory
+# `geojson/` directory
 
 ## 1. Introduction
 This specification outlines the exact structure of the `geojson/` directory of a map.
 
 ## 2. General
 The `geojson/` directory holds the vector data of all objects and locations as multiple [geojson files](https://en.wikipedia.org/wiki/GeoJSON).  
-Each file is gzipped and holds an array of [geojson features](https://tools.ietf.org/html/rfc7946#section-3.2).
+Each file is gzipped and holds an array of [geojson features](https://tools.ietf.org/html/rfc7946#section-3.2).  
+Not every map has every type of object/location therefore the `geojson/` directory may include all, some or even none of the files specified below. For example Stratis doesn't include any fountains; ergo the `fountain.geojson.gz` is omitted entirely.
 
 ## 3. Generic Objects
 Generic objects include all objects that are represented by an icon on the ingame map. Each object type has its own file.  
