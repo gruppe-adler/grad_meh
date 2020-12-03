@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.6)
+cmake_minimum_required (VERSION 3.12)
 
 #----Make changes here
 #This is your project name. And also the filename of the resulting plugin.

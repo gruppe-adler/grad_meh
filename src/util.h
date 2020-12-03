@@ -26,7 +26,7 @@
     #include <codecvt>
 #endif
 
-#define GRAD_MEH_VERSION 0.1
+#define GRAD_MEH_FORMAT_VERSION 0.1
 #define GRAD_MEH_MAX_COLOR_DIF 441.6729559300637f
 #define GRAD_MEH_OVERLAP_THRESHOLD 0.95f
 #define GRAD_MEH_ROAD_WITH_FACTOR (M_PI / 10)
@@ -48,3 +48,5 @@ void reportStatus(std::string worldName, std::string method, std::string report)
 void writeGZJson(const std::string& fileName, fs::path path, nl::json& json);
 
 bool isMapPopulating();
+
+void prettyDiagLog(std::string message);

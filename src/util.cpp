@@ -101,3 +101,9 @@ void writeGZJson(const std::string& fileName, fs::path path, nl::json& json) {
 bool isMapPopulating() {
     return gradMehMapIsPopulating;
 }
+
+// thread safe
+void prettyDiagLog(std::string message) {
+    client::invoker_lock thread_lock;
+    sqf::diag_log(sqf::text("[GRAD] (meh): " + message));
+}

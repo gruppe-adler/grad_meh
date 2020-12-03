@@ -4,6 +4,8 @@
 #include "geojsons.h"
 #include "satimages.h"
 
+#include "version.h"
+
 // String
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -61,7 +63,7 @@ void writeMeta(const std::string& worldName, const int32_t& worldSize, fs::path&
     client::invoker_lock threadLock;
     auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
     nl::json meta;
-    meta["version"] = GRAD_MEH_VERSION;
+    meta["version"] = GRAD_MEH_FORMAT_VERSION;
     meta["worldName"] = worldName;
     meta["worldSize"] = worldSize;
     meta["author"] = sqf::get_text(mapConfig >> "author");
@@ -155,6 +157,21 @@ void extractMap(const std::string& worldName, const std::string& worldPath, std:
     auto basePathGeojson = fs::path("grad_meh") / worldName / "geojson";
     auto basePathSat = fs::path("grad_meh") / worldName / "sat";
 
+    std::stringstream startMsg;
+    startMsg << "Starting export of " << worldName << " [";
+    startMsg << std::boolalpha;
+
+    for(auto i = 0; i < steps.size(); i++)
+    {
+        startMsg << steps[i];
+        if (i < (steps.size() - 1)) {
+            startMsg << ", ";
+        }
+    }
+    startMsg << "]";
+
+    prettyDiagLog(startMsg.str());
+
     if (!fs::exists(basePath)) {
         fs::create_directories(basePath);
     }
@@ -185,7 +202,7 @@ void extractMap(const std::string& worldName, const std::string& worldPath, std:
     }
     catch (std::exception & ex) { // most likely caused by unknown mapinfo type
         client::invoker_lock threadLock;
-        sqf::diag_log(ex.what());
+        prettyDiagLog(std::string("exception while reading the wrp: ").append(ex.what()));
         sqf::hint(ex.what());
         return;
     }
@@ -194,29 +211,34 @@ void extractMap(const std::string& worldName, const std::string& worldPath, std:
 
     if (steps[0]) {
         reportStatus(worldName, "write_sat", "running");
+        prettyDiagLog("Exporting sat images");
         writeSatImages(wrp, worldSize, basePathSat, worldName);
         reportStatus(worldName, "write_sat", "done");
     }
     if (steps[1]) {
         reportStatus(worldName, "write_houses", "running");
+        prettyDiagLog("Exporting geojson");
         writeGeojsons(wrp, basePathGeojson, worldName);
         reportStatus(worldName, "write_houses", "done");
     }
     
     if (steps[2]) {
         reportStatus(worldName, "write_preview", "running");
+        prettyDiagLog("Exporting preview image");
         writePreviewImage(worldName, basePath);
         reportStatus(worldName, "write_preview", "done");
     }
     
     if (steps[3]) {
         reportStatus(worldName, "write_meta", "running");
+        prettyDiagLog("Exporting meta json");
         writeMeta(worldName, worldSize, basePath);
         reportStatus(worldName, "write_meta", "done");
     }
     
     if (steps[4]) {
         reportStatus(worldName, "write_dem", "running");
+        prettyDiagLog("Exporting dem file");
         writeDem(basePath, wrp, worldSize);
         reportStatus(worldName, "write_dem", "done");
     }
@@ -298,7 +320,7 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
             if (!wrpPbo.hasEntry(worldPath))
                 return GRAD_MEH_STATUS_ERR_PBO_NOT_FOUND;
         } catch (std::exception& ex) {
-            sqf::diag_log(std::string("[grad_meh] Exception when opening PBO: ").append(ex.what()));
+            prettyDiagLog(std::string("Exception when opening PBO: ").append(ex.what()));
             return GRAD_MEH_STATUS_ERR_PBO_NOT_FOUND;
         }
     }
@@ -310,7 +332,7 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
         return GRAD_MEH_STATUS_OK;
     }
     else {
-        sqf::diag_log("[grad_meh] gradMeh is already running! Aborting!");
+        prettyDiagLog("gradMeh is already running! Aborting!");
         return GRAD_MEH_STATUS_ERR_ALREADY_RUNNING;
     }
 }
@@ -326,5 +348,18 @@ void intercept::pre_start() {
 }
 
 void intercept::pre_init() {
-    intercept::sqf::system_chat("The grad_meh plugin is running!");
+    std::stringstream preInitMsg;
+
+    preInitMsg << "The grad_meh plugin is running! (";
+        
+    if (GRAD_MEH_GIT_TAG.empty()) {
+        preInitMsg << GRAD_MEH_GIT_REV;
+    }
+    else {
+        preInitMsg << GRAD_MEH_GIT_TAG;
+    }
+        
+    preInitMsg << "@" << GRAD_MEH_GIT_BRANCH << ")";
+    intercept::sqf::system_chat(preInitMsg.str());
+    prettyDiagLog(preInitMsg.str());
 }
