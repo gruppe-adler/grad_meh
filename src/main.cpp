@@ -351,14 +351,14 @@ void intercept::pre_init() {
     std::stringstream preInitMsg;
 
     preInitMsg << "The grad_meh plugin is running! (";
-        
+
     if (GRAD_MEH_GIT_TAG.empty()) {
         preInitMsg << GRAD_MEH_GIT_REV;
     }
     else {
         preInitMsg << GRAD_MEH_GIT_TAG;
     }
-        
+
     preInitMsg << "@" << GRAD_MEH_GIT_BRANCH << ")";
     intercept::sqf::system_chat(preInitMsg.str());
     prettyDiagLog(preInitMsg.str());
