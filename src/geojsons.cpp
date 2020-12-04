@@ -440,6 +440,7 @@ void writeRoads(grad_aff::Wrp& wrp, const std::string& worldName, std::filesyste
 
         int32_t jId = feature["properties"]["ID"];
         feature["properties"].clear();
+        feature["properties"]["width"] = roadWidthMap[jId].first;
 
         //auto ogrGeometry = OGRGeometryFactory::createFromGeoJson(feature["geometry"].dump().c_str());
         //ogrGeometry = ogrGeometry->Buffer(roadWidthMap[jId].first * GRAD_MEH_ROAD_WITH_FACTOR);
