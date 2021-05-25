@@ -64,7 +64,7 @@ void writeMeta(const std::string& worldName, const int32_t& worldSize, fs::path&
     auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
     nl::json meta;
     meta["version"] = GRAD_MEH_FORMAT_VERSION;
-    meta["worldName"] = worldName;
+    meta["worldName"] = boost::algorithm::to_lower_copy(worldName);
     meta["worldSize"] = worldSize;
     meta["author"] = sqf::get_text(mapConfig >> "author");
     meta["displayName"] = sqf::get_text(mapConfig >> "description");
@@ -153,9 +153,11 @@ void writePreviewImage(const std::string& worldName, std::filesystem::path& base
 
 void extractMap(const std::string& worldName, const std::string& worldPath, std::array<bool, 5>& steps) {
 
-    auto basePath = fs::path("grad_meh") / worldName;
-    auto basePathGeojson = fs::path("grad_meh") / worldName / "geojson";
-    auto basePathSat = fs::path("grad_meh") / worldName / "sat";
+    auto lowerWorldName = boost::algorithm::to_lower_copy(worldName);
+
+    auto basePath = fs::path("grad_meh") / lowerWorldName;
+    auto basePathGeojson = fs::path("grad_meh") / lowerWorldName / "geojson";
+    auto basePathSat = fs::path("grad_meh") / lowerWorldName / "sat";
 
     std::stringstream startMsg;
     startMsg << "Starting export of " << worldName << " [";

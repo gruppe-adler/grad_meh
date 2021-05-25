@@ -90,7 +90,7 @@
         },
         "worldName": {
             "type": "string",
-            "description": "worldName of map. Acts as an unique identifier.",
+            "description": "worldName of map in lowercase. Acts as an unique identifier.",
             "default": "",
             "examples": [
                 "utes"
