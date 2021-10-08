@@ -3,7 +3,7 @@
 Gruppe Adler Map Exporter (grad_meh) is an Arma 3 modification built on [intercept](https://github.com/intercept/intercept), which allows exporting Arma 3 maps.  
 If you wonder what the `h` stands for you should check out [this pull request](https://github.com/gruppe-adler/grad_meh/pull/1).   
 
-The aim of this project is not to generate finished map tiles for a [WMTS](https://en.wikipedia.org/wiki/Web_Map_Tile_Service), but to export all data that might be needed to generate such tiles or basically anything else. So the goal is to export everyting interesting about an Arma 3 map. What you do with that data is up to you. The use cases are only limited by your imagination (ﾉ◕ヮ◕)ﾉ*:・ﾟ✧  
+The aim of this project is not to generate finished map tiles for a [WMTS](https://en.wikipedia.org/wiki/Web_Map_Tile_Service), but to export all data that might be needed to generate such tiles or basically anything else. So the goal is to export everything interesting about an Arma 3 map. What you do with that data is up to you. The use cases are only limited by your imagination (ﾉ◕ヮ◕)ﾉ*:・ﾟ✧  
   
 The [output section](#Output) outlines what exactly is exported.  
   
@@ -13,8 +13,8 @@ Check out our [FAQ](#FAQ) at the bottom of this README if you ask yourself "How?
 Download the latest version of the mod from our [releases page](https://github.com/gruppe-adler/grad_meh/releases). The only dependency, **which has to be loaded as well** is [intercept](https://steamcommunity.com/sharedfiles/filedetails/?id=1645973522). 
 
 ## Usage
-Although we would say that using `grad_meh` is intuitive and mostly self explanatory, we made <a href="https://youtu.be/VdIXrm_eUMc" target="_blank">this short video</a> on how to use it.  
-**HINT**: If you have any problems with the export not starting, try disabling BattleEye.
+Although we would say that using `grad_meh` is intuitive and mostly self-explanatory, we made <a href="https://youtu.be/VdIXrm_eUMc" target="_blank">this short video</a> on how to use it.  
+**HINT**: If you have any problems with the export not starting, try disabling BattlEye.
 
 ## Limitations
 - To reduce complexity we only allow one export process at a time.
@@ -27,7 +27,7 @@ We export the following from Arma 3 maps:
 - Preview picture
 - Satellite image
 - Vector data for all map objects / locations
-- Any interesting meta data like display name, longitude, latitude, etc.
+- Any interesting metadata like display name, longitude, latitude, etc.
 
 All exported files can be found in the `grad_meh` subdirectory of your Arma 3 installation directory. Each map has its own subdirectory, which structure is further explained [here](./docs/output_spec.md).
 
@@ -63,8 +63,8 @@ But for reference: It took us less than thirty seconds to export everything for 
 Yes, check out [this repository](https://github.com/gruppe-adler/meh-data). (We would appreciate if you contribute exported maps to this repository)
 
 ### Can I just tab out while the export process is running?
-Yes you can tab out while the export is running, but we recommend starting with the [`-noPause` Arma 3 startup parameter](https://community.bistudio.com/wiki/Arma_3_Startup_Parameters#Developer_Options). Otherwise MEH will not initiate the export of pending maps.  
+Yes you can tab out while the export is running, but we recommend starting with the [`-noPause` Arma 3 startup parameter](https://community.bistudio.com/wiki/Arma_3_Startup_Parameters#Developer_Options). Otherwise, MEH will not initiate the export of pending maps.  
 Oh... and yeah and your CPU utilization will probably peak around 100% while MEH is running so have fun being productive.
 
 ### How does grad_meh work?
-grad_meh utilizes [our arma file formats C++ library](https://github.com/gruppe-adler/grad_aff) to parse all map relevant files. So most of the magic is outsourced.  
+grad_meh utilizes [our Arma file formats C++ library](https://github.com/gruppe-adler/grad_aff) to parse all map relevant files. So most of the magic is outsourced.  
