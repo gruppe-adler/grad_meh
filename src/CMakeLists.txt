@@ -54,6 +54,7 @@ if (NOT TARGET Libsquish::Libsquish)
 endif ()
 
 find_package(OpenEXR CONFIG)
+find_package(PNG MODULE)
 find_package(OpenImageIO CONFIG REQUIRED)
 
 # GADL
@@ -108,7 +109,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_library(${INTERCEPT_PLUGIN_NAME} SHARED ${INTERCEPT_PLUGIN_SOURCES} ${INTERCEPT_HOST_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 
 target_include_directories(${INTERCEPT_PLUGIN_NAME} PUBLIC ${OPENIMAGEIO_INCLUDE_DIR})
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} GDAL::GDAL)
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${GDAL_LIBRARIES})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenImageIO::OpenImageIO OpenImageIO::OpenImageIO_Util)
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${Boost_LIBRARIES})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} nlohmann_json nlohmann_json::nlohmann_json)
