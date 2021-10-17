@@ -92,7 +92,33 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
         std::string fillerTile = "";
         std::string prefix = "s_";
 
+        uint32_t maxX2 = 0;
+        uint32_t maxY2 = 0;
+
+        // TODO: refactor this when implementing the new rap api
         for (auto& rvmatPath : rvmats) {
+
+            std::vector<std::string> parts;
+            boost::split(parts, ((fs::path)rvmatPath).filename().string(), boost::is_any_of("_"));
+
+            if (parts.size() > 1) {
+                std::vector<std::string> numbers;
+                boost::split(numbers, parts[1], boost::is_any_of("-"));
+
+                if (numbers.size() > 1) {
+                    auto x = std::stoi(numbers[0]);
+                    auto y = std::stoi(numbers[1]);
+
+                    if (x > maxX2) {
+                        maxX2 = x;
+                    }
+
+                    if (y > maxY2) {
+                        maxY2 = y;
+                    }
+                }
+            }
+
             if (!boost::istarts_with(((fs::path)rvmatPath).filename().string(), lastValidRvMat)) {
                 auto rap = grad_aff::Rap::Rap(rvmatPbo.getEntryData(rvmatPath));
                 rap.readRap();
@@ -140,8 +166,8 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
         // find highest x/y
         std::vector<std::string> splitResult = {};
         boost::split(splitResult, ((fs::path)lcoPaths[lcoPaths.size() - 1]).filename().string(), boost::is_any_of("_"));
-        uint32_t maxX = std::stoi(splitResult[1]);
-        uint32_t maxY = std::stoi(splitResult[2]);
+        uint32_t maxX = maxX2; //std::stoi(splitResult[1]);
+        uint32_t maxY = maxY2; //std::stoi(splitResult[2]);
 
         // find two tiles "in the middle"
         uint32_t x = maxX / 2;
