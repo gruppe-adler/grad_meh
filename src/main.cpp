@@ -63,8 +63,8 @@ void writeMeta(const std::string& worldName, const int32_t& worldSize, fs::path&
     client::invoker_lock threadLock;
     auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
     nl::json meta;
-    meta["version"] = GRAD_MEH_FORMAT_VERSION;
-    meta["worldName"] = boost::algorithm::to_lower_copy(worldName);
+    meta["version"] = GRAD_MEH_GIT_LAST_TAG;
+    meta["worldName"] = ba::to_lower_copy(worldName);
     meta["worldSize"] = worldSize;
     meta["author"] = sqf::get_text(mapConfig >> "author");
     meta["displayName"] = sqf::get_text(mapConfig >> "description");
@@ -73,6 +73,11 @@ void writeMeta(const std::string& worldName, const int32_t& worldSize, fs::path&
     meta["longitude"] = sqf::get_number(mapConfig >> "longitude");
     meta["gridOffsetX"] = sqf::get_number(mapConfig >> "Grid" >> "offsetX");
     meta["gridOffsetY"] = sqf::get_number(mapConfig >> "Grid" >> "offsetY");
+
+    auto colorArray = sqf::get_array(mapConfig >> "OutsideTerrain" >> "colorOutside").to_array();
+    if (!colorArray.empty()) {
+        meta["colorOutside"] = std::vector<float_t>(colorArray.begin(), colorArray.end());
+    }
 
     auto gridArray = nl::json::array();
 
