@@ -808,6 +808,13 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
         }
 
         auto pboPath = findPboPath(modelPath);
+
+        if (pboPath.empty()) {
+            modelMapTypes[i] = {};
+            modelInfos[i] = {};
+            break;
+        }
+
         std::shared_ptr<grad_aff::Pbo> pbo = {};
         auto res = pboMap.find(pboPath);
         if (res == pboMap.end()) {
@@ -843,6 +850,10 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
                     for (int j = 0; j < odol.lods.size(); j++) {
                         if (odol.lods[j].lodType == LodType::SPECIAL_LOD) {
                             geoIndex = j;
+                            break;
+                        }
+                        if (geoIndex == -1 && odol.lods[j].lodType == LodType::GEOMETRY) { // Fallback
+                            geoIndex = j; 
                         }
                     }
                     auto memLod = odol.readLod(geoIndex);
