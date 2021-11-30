@@ -17,44 +17,44 @@
     "title": "grad_meh meta.json schema",
     "properties": {
         "author": {
+            "type": "string",
             "default": "",
             "description": "Map author (corresponds to MAP_CONFIG >> \"author\").",
             "examples": [
                 "Bohemia Interactive"
-            ],
-            "title": "Author"
+            ]
         },
         "displayName": {
+            "type": "string",
             "default": "",
             "description": "Display name (corresponds to MAP_CONFIG >> \"description\").",
             "examples": [
                 "Utes"
-            ],
-            "title": "Display name"
+            ]
         },
         "elevationOffset": {
+            "type": "number",
             "default": 0.0,
             "description": "Offset (in m) of DEM values from 0 ASL (corresponds to MAP_CONFIG >> \"elevationOffset\").",
             "examples": [
                 0.0
-            ],
-            "title": "DEM elevation offset"
+            ]
         },
         "gridOffsetX": {
+            "type": "number",
             "default": 0.0,
             "description": "Offset (in m) of grid origin in X direction. (corresponds to MAP_CONFIG >> \"Grid\" >> \"offsetX\").",
             "examples": [
                 0.0
-            ],
-            "title": "Grid offset in X direction"
+            ]
         },
         "gridOffsetY": {
+            "type": "number",
             "default": 0.0,
             "description": "Offset (in m) of grid origin in Y direction (corresponds to MAP_CONFIG >> \"Grid\" >> \"offsetY\").",
             "examples": [
                 5120.0
-            ],
-            "title": "Grid offset in Y direction"
+            ]
         },
         "grids": {
             "type": "array",
@@ -108,6 +108,7 @@
     "definitions": {
         "grid": {
             "type": "object",
+            "additionalProperties": false,
             "required": [
                 "format",
                 "formatX",
