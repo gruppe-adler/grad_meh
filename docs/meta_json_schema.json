@@ -18,7 +18,6 @@
     "properties": {
         "author": {
             "type": "string",
-            "default": "",
             "description": "Map author (corresponds to MAP_CONFIG >> \"author\").",
             "examples": [
                 "Bohemia Interactive"
@@ -26,7 +25,6 @@
         },
         "displayName": {
             "type": "string",
-            "default": "",
             "description": "Display name (corresponds to MAP_CONFIG >> \"description\").",
             "examples": [
                 "Utes"
@@ -34,7 +32,6 @@
         },
         "elevationOffset": {
             "type": "number",
-            "default": 0.0,
             "description": "Offset (in m) of DEM values from 0 ASL (corresponds to MAP_CONFIG >> \"elevationOffset\").",
             "examples": [
                 0.0
@@ -42,7 +39,6 @@
         },
         "gridOffsetX": {
             "type": "number",
-            "default": 0.0,
             "description": "Offset (in m) of grid origin in X direction. (corresponds to MAP_CONFIG >> \"Grid\" >> \"offsetX\").",
             "examples": [
                 0.0
@@ -50,7 +46,6 @@
         },
         "gridOffsetY": {
             "type": "number",
-            "default": 0.0,
             "description": "Offset (in m) of grid origin in Y direction (corresponds to MAP_CONFIG >> \"Grid\" >> \"offsetY\").",
             "examples": [
                 5120.0
@@ -58,12 +53,12 @@
         },
         "grids": {
             "type": "array",
+            "description": "Includes grids for different zoom levels.",
             "items": { "$ref": "#/definitions/grid" }
         },
         "latitude": {
             "type": "number",
             "description": "Longitude of map (corresponds to MAP_CONFIG >> \"latitude\").",
-            "default": 0.0,
             "minimum": -90,
             "maximum": 90,
             "examples": [
@@ -73,7 +68,6 @@
         "longitude": {
             "type": "number",
             "description": "Longitude of map (corresponds to MAP_CONFIG >> \"longitude\").",
-            "default": 0.0,
             "minimum": -180,
             "maximum": 180,
             "examples": [
@@ -83,7 +77,6 @@
         "version": {
             "type": "number",
             "description": "Version of meta.json specification.",
-            "default": 1.0,
             "examples": [
                 0.1
             ]
@@ -91,7 +84,6 @@
         "worldName": {
             "type": "string",
             "description": "worldName of map in lowercase. Acts as an unique identifier.",
-            "default": "",
             "examples": [
                 "utes"
             ]
@@ -99,7 +91,6 @@
         "worldSize": {
             "type": "number",
             "description": "Size of map in meters.",
-            "default": 0,
             "examples": [
                 5120
             ]
@@ -121,7 +112,6 @@
                 "format": {
                     "type": "string",
                     "description": "General grid format; X will be replaced by the formatted x-value and Y by the formatted y-value (corresponds to MAP_CONFIG >> \"Grid\" >> <ZOOM> >> \"format\")",
-                    "default": "XY",
                     "examples": [
                         "XY"
                     ]
@@ -129,7 +119,6 @@
                 "formatX": {
                     "type": "string",
                     "description": "Format of x value (corresponds to MAP_CONFIG >> \"Grid\" >> <ZOOM> >> \"formatX\")",
-                    "default": "000",
                     "examples": [
                         "000"
                     ]
@@ -137,7 +126,6 @@
                 "formatY": {
                     "type": "string",
                     "description": "Format of y value (corresponds to MAP_CONFIG >> \"Grid\" >> <ZOOM> >> \"formatY\")",
-                    "default": "000",
                     "examples": [
                         "000"
                     ]
@@ -145,7 +133,6 @@
                 "stepX": {
                     "type": "number",
                     "description": "Spacing between grid steps (in m) on x-axis (corresponds to MAP_CONFIG >> \"Grid\" >> <ZOOM> >> \"stepX\")",
-                    "default": 0,
                     "examples": [
                         100
                     ]
@@ -153,7 +140,6 @@
                 "stepY": {
                     "type": "integer",
                     "description": "Spacing between grid steps (in m) on y-axis (corresponds to MAP_CONFIG >> \"Grid\" >> <ZOOM> >> \"stepY\")",
-                    "default": 0,
                     "examples": [
                         -100
                     ]
@@ -161,7 +147,6 @@
                 "zoomMax": {
                     "type": "number",
                     "description": "Max zoom at which grid is shown (same as Arma 3 scripting command ctrlMapScale). (corresponds to MAP_CONFIG >> \"Grid\" >> <ZOOM> >> \"zoomMax\")",
-                    "default": 0.0,
                     "examples": [
                         0.15000000596046448
                     ]
