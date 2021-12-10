@@ -74,6 +74,20 @@
                 30.0
             ]
         },
+        "colorOutside": {
+            "type": "array",
+            "description": " Outside color of map. (corresponds to MAP_CONFIG >> >> \"OutsideTerrain\" >> \"colorOutside\").",
+            "items": {
+              "type": "number",
+              "minumum": 0,
+              "maximum": 1
+            },
+            "minItems": 4,
+            "maxItems": 4,
+            "examples": [
+                [0.227451, 0.27451, 0.384314, 1]
+            ]
+        },
         "version": {
             "type": "number",
             "description": "Version of meta.json specification.",
