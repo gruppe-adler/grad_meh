@@ -25,6 +25,7 @@ Inside this document the term "`MAP_CONFIG`" refers to the  [CfgWorlds](https://
 | `grids[i].zoomMax` | `number` | `0.949999988079071` | Max zoom at which grid is shown (same as [ctrlMapScale](https://community.bistudio.com/wiki/ctrlMapScale))<br>(corresponds to `MAP_CONFIG >> "Grid" >> <ZOOM> >> "zoomMax"`)  |
 | `latitude` | `number` | `-35.09700012207031` | Latitude of map<br>(corresponds to [`MAP_CONFIG >> "latitude"`](https://community.bistudio.com/wiki/Arma_3_CfgWorlds_Config_Reference#latitude)) |
 | `longitude` | `number` | `16.8200035095215` | Longitude of map<br>(corresponds to [`MAP_CONFIG >> "longitude"`](https://community.bistudio.com/wiki/Arma_3_CfgWorlds_Config_Reference#longitude)) |
+| `colorOutside` | `array` | `[0.227451, 0.27451, 0.384314, 1]` | Outside color of map. _This property is optional and may be omitted, if the related config attribute does not exist._<br>(corresponds to [`MAP_CONFIG >> "OutsideTerrain" >> "colorOutside"`](https://community.bistudio.com/wiki/Arma_3_CfgWorlds_Config_Reference#class_OutsideTerrain)) |
 | `version` | `number` | `0.1` | Version of `grad_meh` | |
 | `worldName` | `string` | `"stratis"` | ID of map<br>(corresponds to LOWERCASE [`configName`](https://community.bistudio.com/wiki/configName) `MAP_CONFIG`) |
 | `worldSize` | `number` | `8192` | Size of map in meters<br>(corresponds to  [`MAP_CONFIG >> "mapSize"`](https://community.bistudio.com/wiki/Arma_3_CfgWorlds_Config_Reference#mapSize)) |
