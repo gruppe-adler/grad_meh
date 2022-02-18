@@ -547,7 +547,9 @@ void writeSpecialIcons(grad_aff::Wrp& wrp, fs::path& basePathGeojson, uint32_t i
             treeLocations.push_back(pointFeature);
         }
     }
-    writeGZJson(name + ".geojson.gz", basePathGeojson, treeLocations);
+    if (!treeLocations.is_null() && treeLocations.is_array() && !treeLocations.empty()) {
+        writeGZJson(name + ".geojson.gz", basePathGeojson, treeLocations);
+    }
 }
 
 
