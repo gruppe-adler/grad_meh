@@ -24,8 +24,8 @@ else()
         OUTPUT_VARIABLE GIT_BRANCH)
 
     execute_process(
-        COMMAND git describe --tags --abbrev=0
-        OUTPUT_VARIABLE GIT_LAST_TAG
+        COMMAND git describe --tags --abbrev=0 --match v*
+        OUTPUT_VARIABLE GIT_LAST_VERSION
     )
 
     string(STRIP "${GIT_REV}" GIT_REV)
@@ -33,7 +33,8 @@ else()
     string(STRIP "${GIT_DIFF}" GIT_DIFF)
     string(STRIP "${GIT_TAG}" GIT_TAG)
     string(STRIP "${GIT_BRANCH}" GIT_BRANCH)
-    string(STRIP "${GIT_LAST_TAG}" GIT_LAST_TAG)
+    string(STRIP "${GIT_LAST_VERSION}" GIT_LAST_VERSION)
+    string(REPLACE "^v" "" GIT_LAST_VERSION "${GIT_LAST_VERSION}")
 endif()
 
 set(VERSION "#include \"version.h\"
@@ -41,7 +42,7 @@ set(VERSION "#include \"version.h\"
 const std::string GRAD_MEH_GIT_REV = \"${GIT_REV}${GIT_DIFF}\";
 const std::string GRAD_MEH_GIT_TAG = \"${GIT_TAG}\";
 const std::string GRAD_MEH_GIT_BRANCH = \"${GIT_BRANCH}\";
-const std::string GRAD_MEH_GIT_LAST_TAG = \"${GIT_LAST_TAG}\";
+const std::string GRAD_MEH_GIT_LAST_VERSION = \"${GIT_LAST_VERSION}\";
 ")
 
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/version.cpp)
