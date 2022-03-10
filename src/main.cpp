@@ -148,6 +148,11 @@ void writePreviewImage(const std::string& worldName, std::filesystem::path& base
     }
 
     auto pboPath = findPboPath(picturePath);
+
+    if (pboPath.empty()) {
+        return;
+    }
+
     grad_aff::Pbo prewviewPbo(pboPath.string());
 
     auto paa = grad_aff::Paa();

@@ -20,6 +20,7 @@ Although we would say that using `grad_meh` is intuitive and mostly self-explana
 - To reduce complexity we only allow one export process at a time.
 - To reduce complexity it is not possible to stop a running export reliably, except by killing the game.
 - MEH cannot export maps included in `.ebo` files, because those are encrypted and therefore we cannot get to the map files. 
+- MEH will have some difficulties with older maps (e.g. Fallujah, Clafghan), where it fails to export roads and tile the sat image correctly.
 
 ## Output
 We export the following from Arma 3 maps:

@@ -547,7 +547,9 @@ void writeSpecialIcons(grad_aff::Wrp& wrp, fs::path& basePathGeojson, uint32_t i
             treeLocations.push_back(pointFeature);
         }
     }
-    writeGZJson(name + ".geojson.gz", basePathGeojson, treeLocations);
+    if (!treeLocations.is_null() && treeLocations.is_array() && !treeLocations.empty()) {
+        writeGZJson(name + ".geojson.gz", basePathGeojson, treeLocations);
+    }
 }
 
 
@@ -808,6 +810,13 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
         }
 
         auto pboPath = findPboPath(modelPath);
+
+        if (pboPath.empty()) {
+            modelMapTypes[i] = {};
+            modelInfos[i] = {};
+            break;
+        }
+
         std::shared_ptr<grad_aff::Pbo> pbo = {};
         auto res = pboMap.find(pboPath);
         if (res == pboMap.end()) {
@@ -843,6 +852,10 @@ void writeGeojsons(grad_aff::Wrp& wrp, std::filesystem::path& basePathGeojson, c
                     for (int j = 0; j < odol.lods.size(); j++) {
                         if (odol.lods[j].lodType == LodType::SPECIAL_LOD) {
                             geoIndex = j;
+                            break;
+                        }
+                        if (geoIndex == -1 && odol.lods[j].lodType == LodType::GEOMETRY) { // Fallback
+                            geoIndex = j; 
                         }
                     }
                     auto memLod = odol.readLod(geoIndex);
