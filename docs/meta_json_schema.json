@@ -89,10 +89,11 @@
             ]
         },
         "version": {
-            "type": "number",
-            "description": "Version of meta.json specification.",
+            "type": "string",
+            "description": "Version of grad_meh",
             "examples": [
-                0.1
+                "0.1.0",
+                "2.0.0-rc.1"
             ]
         },
         "worldName": {

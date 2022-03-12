@@ -63,7 +63,7 @@ void writeMeta(const std::string& worldName, const int32_t& worldSize, fs::path&
     client::invoker_lock threadLock;
     auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
     nl::json meta;
-    meta["version"] = GRAD_MEH_GIT_LAST_TAG;
+    meta["version"] = GRAD_MEH_GIT_LAST_VERSION;
     meta["worldName"] = ba::to_lower_copy(worldName);
     meta["worldSize"] = worldSize;
     meta["author"] = sqf::get_text(mapConfig >> "author");
