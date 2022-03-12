@@ -34,7 +34,7 @@ else()
     string(STRIP "${GIT_TAG}" GIT_TAG)
     string(STRIP "${GIT_BRANCH}" GIT_BRANCH)
     string(STRIP "${GIT_LAST_VERSION}" GIT_LAST_VERSION)
-    string(REPLACE "^v" "" GIT_LAST_VERSION "${GIT_LAST_VERSION}")
+    string(REGEX REPLACE "^v" "" GIT_LAST_VERSION "${GIT_LAST_VERSION}")
 endif()
 
 set(VERSION "#include \"version.h\"
