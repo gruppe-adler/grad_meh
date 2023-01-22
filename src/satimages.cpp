@@ -260,14 +260,14 @@ void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesyste
         maxX += 1;
 
         auto hasEqualStrechting = (worldSize == (upperMipmap.width * maxX)) || (worldSize == ((upperMipmap.width - overlap) * maxX));
-        auto strechedBorderSizeStart = overlap / 2;
-        auto strechedBorderSizeEnd = strechedBorderSizeStart;
+        int32_t strechedBorderSizeStart = overlap / 2;
+        int32_t strechedBorderSizeEnd = strechedBorderSizeStart;
 
         if (!hasEqualStrechting) {
-            auto tileSizeAfterOverlap = upperMipmap.width - overlap;
-            auto temp = (tileSizeAfterOverlap * maxX) - worldSize;
+            int32_t tileSizeAfterOverlap = upperMipmap.width - overlap;
+            int32_t temp = (tileSizeAfterOverlap * maxX) - worldSize;
             temp -= (overlap / 2);
-            auto lastTileRealWidth = tileSizeAfterOverlap - temp;
+            int32_t lastTileRealWidth = (tileSizeAfterOverlap - temp) % upperMipmap.width;
             strechedBorderSizeEnd = upperMipmap.width - lastTileRealWidth;
         }
 
