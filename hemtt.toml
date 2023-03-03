@@ -7,8 +7,7 @@ files = [
     "logo_active_ca.paa",
     "logo_ca.paa",
     "overview_co.paa",
-    "logo_small_ca.paa"
-    "Adler.paa",
+    "logo_small_ca.paa",
     "LICENSE",
     "README.md",
     "*.dll",
