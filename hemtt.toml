@@ -4,6 +4,10 @@ author = "Gruppe Adler"
 folder_optionals = false
 files = [
     "mod.cpp",
+    "logo_active_ca.paa",
+    "logo_ca.paa",
+    "overview_co.paa",
+    "logo_small_ca.paa"
     "Adler.paa",
     "LICENSE",
     "README.md",
