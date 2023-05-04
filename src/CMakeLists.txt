@@ -93,8 +93,8 @@ FetchContent_MakeAvailable(Corrosion)
 
 # Import targets defined in a package or workspace manifest `Cargo.toml` file
 
-corrosion_import_crate(MANIFEST_PATH rust/Cargo.toml)
-corrosion_add_cxxbridge(rust-lib CRATE rvff-cxx-lib MANIFEST_PATH rust FILES lib.rs)
+corrosion_import_crate(MANIFEST_PATH rvff-cxx/Cargo.toml)
+corrosion_add_cxxbridge(rust-lib CRATE rvff-cxx MANIFEST_PATH rvff-cxx FILES lib.rs)
 
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -105,10 +105,6 @@ target_include_directories(${INTERCEPT_PLUGIN_NAME} PUBLIC ${OPENIMAGEIO_INCLUDE
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} GDAL::GDAL)
 
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenImageIO::OpenImageIO OpenImageIO::OpenImageIO_Util)
-
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenImageIO_Util_d.lib)
-endif()
 
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${Boost_LIBRARIES})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} nlohmann_json nlohmann_json::nlohmann_json)
@@ -123,9 +119,9 @@ target_link_libraries(${INTERCEPT_PLUGIN_NAME} rust-lib)
 if(MSVC)
     # Note: This is required because we use `cxx` which uses `cc` to compile and link C++ code.
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-		corrosion_set_env_vars(rvff-cxx-lib "CFLAGS=-MTd" "CXXFLAGS=-MTd")
+		corrosion_set_env_vars(rvff-cxx "CFLAGS=-MTd" "CXXFLAGS=-MTd")
 	else()
-	corrosion_set_env_vars(rvff-cxx-lib "CFLAGS=-MT" "CXXFLAGS=-MT")
+	corrosion_set_env_vars(rvff-cxx "CFLAGS=-MT" "CXXFLAGS=-MT")
 	endif()
 endif()
 
