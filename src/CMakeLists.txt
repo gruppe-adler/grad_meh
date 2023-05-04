@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.12)
+cmake_minimum_required (VERSION 3.15)
 
 
 file(GLOB_RECURSE INTERCEPT_PLUGIN_SOURCES *.h *.hpp *.c *.cpp)
@@ -16,22 +16,17 @@ else()
     set(DEBUG_SUFFIX "")
 endif()
 
-# DXT
-find_path(SQUISH_INCLUDE_DIR squish.h)
-find_library(SQUISH_LIBRARY squish${DEBUG_SUFFIX})
+# fmt
+find_package(fmt CONFIG REQUIRED)
 
 # nlohmann json
 find_package(nlohmann_json CONFIG REQUIRED)
-find_package(OpenSSL REQUIRED)
 
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME ON)
 
-find_package(Boost 1.71.0 COMPONENTS system filesystem thread iostreams) 
-
-# LZO
-find_package(lzokay CONFIG REQUIRED)
+find_package(Boost 1.81.0 COMPONENTS system filesystem thread iostreams) 
 
 # OIIO
 if("${INTERCEPT_LINK_TYPE}" STREQUAL "static")
@@ -40,35 +35,24 @@ if("${INTERCEPT_LINK_TYPE}" STREQUAL "static")
 	add_definitions(-DGRAD_AFF_USE_OIIO)
 endif()
 
-# Let OIIO find external libsquish
-set (LIBSQUISH_INCLUDES ${SQUISH_INCLUDE_DIR})
-set (LIBSQUISH_LIBRARIES ${SQUISH_LIBRARY})
-
-if (NOT TARGET Libsquish::Libsquish)
-    add_library(Libsquish::Libsquish UNKNOWN IMPORTED)
-    set_target_properties(Libsquish::Libsquish PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${LIBSQUISH_INCLUDES}")
-
-    set_property(TARGET Libsquish::Libsquish APPEND PROPERTY
-        IMPORTED_LOCATION "${LIBSQUISH_LIBRARIES}")
-endif ()
-
 find_package(OpenEXR CONFIG)
 find_package(PNG MODULE)
+
+add_definitions(-DOIIO_STATIC_DEFINE)
 find_package(OpenImageIO CONFIG REQUIRED)
 
+# spdlog
+find_package(spdlog CONFIG REQUIRED)
+
 # GADL
-find_package(GDAL REQUIRED)
+find_package(GDAL CONFIG REQUIRED)
 
 #PCL
-find_package(PCL 1.3 REQUIRED)
+find_package(PCL CONFIG REQUIRED)
 
 # Clipper
-FIND_PATH(CLIPPER_INCLUDE_DIR polyclipping/clipper.hpp)
-find_library(CLIPPER_LIBRARY NAMES polyclipping)
+find_package(polyclipping CONFIG REQUIRED)
 
-FIND_PATH(GRAD_AFF_INCLUDE_DIR grad_aff/grad_aff.h HINTS ${GRAD_AFF_PATH} PATH_SUFFIXES include)
-FIND_LIBRARY(GRAD_AFF_LIB_DIR NAMES grad_aff HINTS ${GRAD_AFF_PATH} PATH_SUFFIXES lib)
 
 #include the Intercept headers from the submodule
 set(INTERCEPT_CLIENT_PATH "${CMAKE_SOURCE_DIR}/intercept/src/client")
@@ -90,14 +74,6 @@ endif()
 file(GLOB INTERCEPT_HOST_SOURCES "${INTERCEPT_CLIENT_PATH}/intercept/client/*.cpp"  "${INTERCEPT_CLIENT_PATH}/intercept/client/sqf/*.cpp" "${INTERCEPT_CLIENT_PATH}/intercept/shared/*.cpp")
 SOURCE_GROUP("intercept" FILES ${INTERCEPT_HOST_SOURCES})
 
-include_directories(${Boost_INCLUDE_DIRS}) 
-include_directories(${GRAD_AFF_INCLUDE_DIR})
-include_directories(${GDAL_INCLUDE_DIR})
-include_directories(${PCL_INCLUDE_DIRS})
-include_directories(${CLIPPER_INCLUDE_DIR})
-
-link_directories(${PCL_LIBRARY_DIRS})
-
 # Version file
 ADD_CUSTOM_COMMAND(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
@@ -105,20 +81,53 @@ ADD_CUSTOM_COMMAND(
     COMMAND ${CMAKE_COMMAND} -P
             ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/version.cmake)
 
+include(FetchContent)
+
+FetchContent_Declare(
+    Corrosion
+    GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
+    GIT_TAG master # Optionally specify a commit hash, version tag or branch here
+)
+# Set any global configuration variables such as `Rust_TOOLCHAIN` before this line!
+FetchContent_MakeAvailable(Corrosion)
+
+# Import targets defined in a package or workspace manifest `Cargo.toml` file
+
+corrosion_import_crate(MANIFEST_PATH rust/Cargo.toml)
+corrosion_add_cxxbridge(rust-lib CRATE rvff-cxx-lib MANIFEST_PATH rust FILES lib.rs)
+
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_library(${INTERCEPT_PLUGIN_NAME} SHARED ${INTERCEPT_PLUGIN_SOURCES} ${INTERCEPT_HOST_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 
 target_include_directories(${INTERCEPT_PLUGIN_NAME} PUBLIC ${OPENIMAGEIO_INCLUDE_DIR})
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${GDAL_LIBRARIES})
+
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} GDAL::GDAL)
+
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenImageIO::OpenImageIO OpenImageIO::OpenImageIO_Util)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenImageIO_Util_d.lib)
+endif()
+
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${Boost_LIBRARIES})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} nlohmann_json nlohmann_json::nlohmann_json)
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} lzokay::lzokay)
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${SQUISH_LIBRARY})
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${GRAD_AFF_LIB_DIR})
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} fmt::fmt)
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${PCL_LIBRARIES})
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${CLIPPER_LIBRARY})
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} polyclipping::polyclipping)
+
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
+
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} rust-lib)
+
+if(MSVC)
+    # Note: This is required because we use `cxx` which uses `cc` to compile and link C++ code.
+	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+		corrosion_set_env_vars(rvff-cxx-lib "CFLAGS=-MTd" "CXXFLAGS=-MTd")
+	else()
+	corrosion_set_env_vars(rvff-cxx-lib "CFLAGS=-MT" "CXXFLAGS=-MT")
+	endif()
+endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${INTERCEPT_INCLUDE_PATH})
 

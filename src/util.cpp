@@ -37,19 +37,21 @@ std::vector<fs::path> getFullPboPaths() {
 void populateMap() {
     gradMehMapIsPopulating = true;
     for (auto& p : getFullPboPaths()) {
-        auto pbo = grad_aff::Pbo::Pbo(p.string());
         try {
-            pbo.readPbo(false);
+            auto pboReader = rvff::cxx::create_pbo_reader_path(p.string());
+            auto pbo = pboReader->get_pbo();
+            for (auto& entry : pbo.entries) {
+                for (auto& prop : pbo.properties) {
+                    if (static_cast<std::string>(prop.key) == "prefix") {
+                        entryPboMap.insert({ static_cast<std::string>(prop.value) , p });
+                        break;
+                    }
+                }
+            }
         }
-        catch (std::exception& ex) {
-            client::invoker_lock threadLock;
-            std::stringstream errorStream;
-            errorStream << "[grad_meh] Couldn't open PBO: " << p.string() << " error msg: " << ex.what();
-            sqf::diag_log(errorStream.str());
-            threadLock.unlock();
-        }
-        for (auto& entry : pbo.entries) {
-            entryPboMap.insert({ pbo.productEntries["prefix"] , p });
+        catch (const rust::Error& ex) {
+            spdlog::error(fmt::format("Exception while reading PBO: {}", p.string()));
+            log_error(ex);
         }
     }
     gradMehMapIsPopulating = false;
@@ -59,6 +61,7 @@ void populateMap() {
     Finds pbo Path
 */
 fs::path findPboPath(std::string path) {
+    spdlog::info(fmt::format("Searching pbos for: {}", path));
     size_t matchLength = 0;
     fs::path retPath;
 
@@ -72,6 +75,14 @@ fs::path findPboPath(std::string path) {
             retPath = val;
         }
     }
+
+    if (retPath.empty()) {
+        spdlog::warn(fmt::format("No pbo found for: {}", path));
+    }
+    else {
+        spdlog::info(fmt::format("Found pbo at: {}", retPath.string()));
+    }
+
     return retPath;
 }
 
@@ -106,4 +117,9 @@ bool isMapPopulating() {
 void prettyDiagLog(std::string message) {
     client::invoker_lock thread_lock;
     sqf::diag_log(sqf::text("[GRAD] (meh): " + message));
+}
+
+void log_error(const rust::Error& ex) {
+    spdlog::error(ex.what());
+    spdlog::shutdown();
 }

@@ -37,15 +37,15 @@
 namespace nl = nlohmann;
 
 
-void writeArea(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::vector<std::pair<Object, ODOLv4xLod&>>& objectPairs,
+void writeArea(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson, const std::vector<std::pair<rvff::cxx::ObjectCxx, rvff::cxx::LodCxx&>>& objectPairs,
     uint32_t epsilon, uint32_t minClusterSize, uint32_t buffer, uint32_t simplify, const std::string& name) {
 
     size_t nPoints = 0;
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloudPtr(new pcl::PointCloud<pcl::PointXYZ>());
     for (auto& objectPair : objectPairs) {
         pcl::PointXYZ point;
-        point.x = objectPair.first.transformMatrix[3][0];
-        point.y = objectPair.first.transformMatrix[3][2];
+        point.x = objectPair.first.transform_matrx._3.x;// [3] [0] ;
+        point.y = objectPair.first.transform_matrx._3.z;// [3] [2] ;
         point.z = 0;
         cloudPtr->push_back(point);
         nPoints++;

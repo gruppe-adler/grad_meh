@@ -4,6 +4,12 @@
 
 #include "findPbos.h"
 
+#include <rust/cxx.h>
+
+#include <fmt/format.h>
+
+#include "spdlog/spdlog.h"
+
 // String
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -16,9 +22,12 @@
 
 #include <vector>
 #include <filesystem>
+#include <sstream>
+#include <fstream>
+#include <ostream>
 #include <nlohmann/json.hpp>
 
-#include <grad_aff/pbo/pbo.h>
+#include <rust-lib/lib.h>
 
 #ifdef _WIN32
     #define NOMINMAX
@@ -50,3 +59,4 @@ void writeGZJson(const std::string& fileName, fs::path path, nl::json& json);
 bool isMapPopulating();
 
 void prettyDiagLog(std::string message);
+void log_error(const rust::Error& ex);
