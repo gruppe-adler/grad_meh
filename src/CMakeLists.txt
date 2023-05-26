@@ -26,7 +26,7 @@ set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME ON)
 
-find_package(Boost 1.81.0 COMPONENTS system filesystem thread iostreams) 
+find_package(Boost 1.82.0 REQUIRED COMPONENTS system filesystem thread iostreams) 
 
 # OIIO
 if("${INTERCEPT_LINK_TYPE}" STREQUAL "static")
@@ -41,8 +41,8 @@ find_package(PNG MODULE)
 add_definitions(-DOIIO_STATIC_DEFINE)
 find_package(OpenImageIO CONFIG REQUIRED)
 
-# spdlog
-find_package(spdlog CONFIG REQUIRED)
+# plog
+find_package(plog CONFIG REQUIRED)
 
 # GADL
 find_package(GDAL CONFIG REQUIRED)
@@ -96,7 +96,6 @@ FetchContent_MakeAvailable(Corrosion)
 corrosion_import_crate(MANIFEST_PATH rvff-cxx/Cargo.toml)
 corrosion_add_cxxbridge(rust-lib CRATE rvff-cxx MANIFEST_PATH rvff-cxx FILES lib.rs)
 
-
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_library(${INTERCEPT_PLUGIN_NAME} SHARED ${INTERCEPT_PLUGIN_SOURCES} ${INTERCEPT_HOST_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 
@@ -108,11 +107,11 @@ target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenImageIO::OpenImageIO OpenImag
 
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${Boost_LIBRARIES})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} nlohmann_json nlohmann_json::nlohmann_json)
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} fmt::fmt)
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} fmt::fmt-header-only)
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${PCL_LIBRARIES})
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} polyclipping::polyclipping)
 
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} plog::plog)
 
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} rust-lib)
 
@@ -121,7 +120,7 @@ if(MSVC)
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		corrosion_set_env_vars(rvff-cxx "CFLAGS=-MTd" "CXXFLAGS=-MTd")
 	else()
-	corrosion_set_env_vars(rvff-cxx "CFLAGS=-MT" "CXXFLAGS=-MT")
+		corrosion_set_env_vars(rvff-cxx "CFLAGS=-MT" "CXXFLAGS=-MT")
 	endif()
 endif()
 
@@ -139,6 +138,7 @@ else()
 	set(CMAKE_CXX_FLAGS_RELEASE "/MT /Zi /O2 /Ob1 /EHsc /MP") #with debug info
 	# /FORCE:MULTIPLE requrired to ignore  second definition of tiff stuff in gdal (conflicting with oiio?)
 	target_link_options(${INTERCEPT_PLUGIN_NAME} PUBLIC "/FORCE:MULTIPLE")
+	set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "/DEBUG:FULL") 
 	set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/OPT:REF /DEBUG:FULL") 
 endif()
 

@@ -8,7 +8,7 @@
 
 #include <fmt/format.h>
 
-#include "spdlog/spdlog.h"
+#include <plog/Log.h>
 
 // String
 #include <boost/algorithm/string/replace.hpp>
@@ -59,4 +59,3 @@ void writeGZJson(const std::string& fileName, fs::path path, nl::json& json);
 bool isMapPopulating();
 
 void prettyDiagLog(std::string message);
-void log_error(const rust::Error& ex);

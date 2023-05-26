@@ -50,18 +50,18 @@ void populateMap() {
             }
         }
         catch (const rust::Error& ex) {
-            spdlog::error(fmt::format("Exception while reading PBO: {}", p.string()));
-            log_error(ex);
+            PLOG_WARNING << fmt::format("Couldn't open PBO at: {} (Exception: {})", p.string(), ex.what());
         }
     }
     gradMehMapIsPopulating = false;
+    PLOG_INFO << "Finished PBO Mapping";
 }
 
 /*
     Finds pbo Path
 */
 fs::path findPboPath(std::string path) {
-    spdlog::info(fmt::format("Searching pbos for: {}", path));
+    PLOG_INFO << fmt::format("Searching pbos for: {}", path);
     size_t matchLength = 0;
     fs::path retPath;
 
@@ -77,10 +77,10 @@ fs::path findPboPath(std::string path) {
     }
 
     if (retPath.empty()) {
-        spdlog::warn(fmt::format("No pbo found for: {}", path));
+        PLOG_WARNING << fmt::format("No pbo found for: {}", path);
     }
     else {
-        spdlog::info(fmt::format("Found pbo at: {}", retPath.string()));
+        PLOG_INFO << fmt::format("Found pbo at: {}", retPath.string());
     }
 
     return retPath;
@@ -101,7 +101,7 @@ void writeGZJson(const std::string& fileName, fs::path path, nl::json& json) {
     strInStream << std::setw(4) << json;
 
     bi::filtering_istream fis;
-    fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_compression)));
+    fis.push(bi::gzip_compressor(bi::gzip_params(bi::gzip::best_speed)));
     fis.push(strInStream);
 
     std::ofstream out(path / fileName, std::ios::binary);
@@ -117,9 +117,4 @@ bool isMapPopulating() {
 void prettyDiagLog(std::string message) {
     client::invoker_lock thread_lock;
     sqf::diag_log(sqf::text("[GRAD] (meh): " + message));
-}
-
-void log_error(const rust::Error& ex) {
-    spdlog::error(ex.what());
-    spdlog::shutdown();
 }

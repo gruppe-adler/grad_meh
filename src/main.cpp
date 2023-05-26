@@ -39,11 +39,10 @@
 #include <fmt/chrono.h>
 #include <fmt/format.h>
 
-// spdlog
-#include "spdlog/spdlog.h"
-#include "spdlog/async.h"
-#include "spdlog/sinks/basic_file_sink.h"
-#include "spdlog/stopwatch.h"
+#include <plog/Log.h>
+#include <plog/Initializers/RollingFileInitializer.h>
+#include <plog/Formatters/TxtFormatter.h>
+#include <plog/Appenders/ColorConsoleAppender.h>
 
 #include "findPbos.h"
 #include "SimplePoint.h"
@@ -63,8 +62,7 @@ using SQFPar = game_value_parameter;
 
 static bool gradMehIsRunning = false;
 
-int intercept::api_version()
-{ // This is required for the plugin to work.
+int intercept::api_version() { // This is required for the plugin to work.
     return INTERCEPT_SDK_API_VERSION;
 }
 
@@ -165,23 +163,26 @@ void writePreviewImage(const std::string &worldName, std::filesystem::path &base
     if (pboPath.empty()) {
         return;
     }
+    try {
+        auto previewPbo = rvff::cxx::create_pbo_reader_path(pboPath.string());
+        auto previewData = previewPbo->get_entry_data(picturePath);
+        auto previewMipmap = rvff::cxx::get_mipmap_from_paa_vec(previewData, 0);
 
-    //grad_aff::Pbo prewviewPbo(pboPath.string());
-    auto previewPbo = rvff::cxx::create_pbo_reader_path(pboPath.string());
-    auto previewData = previewPbo->get_entry_data(picturePath);
-    auto previewMipmap = rvff::cxx::get_mipmap_from_paa_vec(previewData, 0);
+        auto previewFileName = (basePath / "preview.png").string();
 
-    auto previewFileName = (basePath / "preview.png").string();
-
-    std::unique_ptr<ImageOutput> out = ImageOutput::create(previewFileName);
-    if (!out)
-        return;
-    ImageSpec spec(previewMipmap.width, previewMipmap.height, 4, TypeDesc::UINT8);
-    out->open(previewFileName, spec);
-    out->write_image(TypeDesc::UINT8, previewMipmap.data.data());
-    out->close();
-
-    //paa.writeImage((basePath / "preview.png").string());
+        std::unique_ptr<ImageOutput> out = ImageOutput::create(previewFileName);
+        if (!out)
+            return;
+        ImageSpec spec(previewMipmap.width, previewMipmap.height, 4, TypeDesc::UINT8);
+        out->open(previewFileName, spec);
+        out->write_image(TypeDesc::UINT8, previewMipmap.data.data());
+        out->close();
+    }
+    catch (const rust::Error& ex) {
+        PLOG_ERROR << fmt::format("Exception in writePreviewImage PBO: {} Picture Path: {}", pboPath.string(), picturePath);
+        PLOG_ERROR << ex.what();
+        throw;
+    }
 }
 
 void extractMap(const std::string &worldName, const std::string &worldPath, std::array<bool, 5> &steps)
@@ -226,31 +227,23 @@ void extractMap(const std::string &worldName, const std::string &worldPath, std:
     try {
         // Find Wrp Path
         auto wrpPath = findPboPath(worldPath);
+        curWorldPath = wrpPath.string();
         auto wrpPboReader = rvff::cxx::create_pbo_reader_path(wrpPath.string());
 
         auto wrp_data = wrpPboReader->get_entry_data(worldPath);
 
         auto wrp = rvff::cxx::OprwCxx{};
         // wrp.wrpName = worldName + ".wrp";
-        try
+
+        if (steps[0] || steps[1] || steps[3] || steps[4])
         {
-            if (steps[0] || steps[1] || steps[3] || steps[4])
-            {
-                reportStatus(worldName, "read_wrp", "running");
-                wrp = rvff::cxx::create_wrp_from_vec(wrp_data);
-                reportStatus(worldName, "read_wrp", "done");
-            }
-            else
-            {
-                reportStatus(worldName, "read_wrp", "canceled");
-            }
+            reportStatus(worldName, "read_wrp", "running");
+            wrp = rvff::cxx::create_wrp_from_vec(wrp_data);
+            reportStatus(worldName, "read_wrp", "done");
         }
-        catch (std::exception& ex)
-        { // most likely caused by unknown mapinfo type
-            client::invoker_lock threadLock;
-            prettyDiagLog(std::string("exception while reading the wrp: ").append(ex.what()));
-            sqf::hint(ex.what());
-            return;
+        else
+        {
+            reportStatus(worldName, "read_wrp", "canceled");
         }
 
         auto worldSize = (uint32_t)wrp.layer_cell_size * wrp.layer_size_x;
@@ -293,12 +286,12 @@ void extractMap(const std::string &worldName, const std::string &worldPath, std:
             writeDem(basePath, wrp, worldSize);
             reportStatus(worldName, "write_dem", "done");
         }
-
     }
     catch (const rust::Error& ex) {
-        spdlog::error(fmt::format("Exception in extract map command"));
-        log_error(ex);
-        throw ex;
+        PLOG_ERROR << "Exception in extract map command";
+        PLOG_ERROR << fmt::format("WRP Path: {}", curWorldPath);
+        PLOG_ERROR << ex.what();
+        throw;
     }
 
     gradMehIsRunning = false;
@@ -420,6 +413,25 @@ void intercept::pre_start()
     static auto grad_meh_export_map_array =
         client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::SCALAR, game_data_type::ARRAY);
 
+#if WIN32
+    std::filesystem::path a3_log_path;
+    PWSTR path_tmp;
+
+    auto get_folder_path_ret = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &path_tmp);
+
+    if (get_folder_path_ret == S_OK) {
+        a3_log_path = path_tmp;
+    }
+    CoTaskMemFree(path_tmp);
+
+    a3_log_path = a3_log_path / "Arma 3";
+
+#endif
+
+    plog::init(plog::debug, fmt::format("{}/grad_meh_{:%Y-%m-%d_%H-%M-%S}.log", a3_log_path.string(), std::chrono::system_clock::now()).c_str());
+
+    PLOG_INFO << "Starting PBO Mapping";
+
     std::thread mapPopulateThread(populateMap);
     mapPopulateThread.detach();
 }
@@ -443,26 +455,6 @@ void intercept::pre_init()
     intercept::sqf::system_chat(preInitMsg.str());
     prettyDiagLog(preInitMsg.str());
 
-#if WIN32
-    std::filesystem::path a3_log_path;
-    PWSTR path_tmp;
+    PLOG_INFO << preInitMsg.str();
 
-    auto get_folder_path_ret = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &path_tmp);
-
-    if (get_folder_path_ret == S_OK) {
-        a3_log_path = path_tmp;
-    }
-    CoTaskMemFree(path_tmp);
-
-    a3_log_path = a3_log_path / "Arma 3";
-
-#endif
-
-    auto async_file = spdlog::basic_logger_mt<spdlog::async_factory>(
-        "meh-logger",
-        fmt::format("{}/grad_meh_{:%Y-%m-%d_%H-%M-%S}.log", a3_log_path.string(), std::chrono::system_clock::now()));
-    spdlog::flush_every(std::chrono::seconds(10));
-    spdlog::flush_on(spdlog::level::err);
-    spdlog::set_default_logger(async_file);
-    spdlog::info(preInitMsg.str());
 }

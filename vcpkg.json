@@ -3,11 +3,10 @@
 	"version-string": "0.7.1",
 	"dependencies": [
 		"nlohmann-json",
-		"lzokay",
 		"boost-filesystem",
 		"boost-iostreams",
 		"openimageio",
-		"spdlog",
+		"plog",
 		{
 			"name": "gdal",
 			"default-features": false,

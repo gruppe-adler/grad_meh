@@ -93,9 +93,12 @@ void writeHouses(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson
 {
     nl::json house = nl::json::array();
 
+    std::map<uint32_t, rvff::cxx::ObjectCxx> objectMap = {};
+    for (auto& object : wrp.objects) {
+        objectMap.insert({ object.object_id, object });
+    }
+
     for (auto& mapInfo : wrp.map_infos_4) {
-        //if (mapInfo->mapType == 4) {
-            //auto mapInfo4Ptr = std::static_pointer_cast<MapType4>(mapInfo);
         nl::json mapFeature;
         mapFeature["type"] = "Feature";
 
@@ -103,7 +106,7 @@ void writeHouses(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson
         coordArr.push_back(std::vector<float_t> { mapInfo.bounds.a.x, mapInfo.bounds.a.y });
         coordArr.push_back(std::vector<float_t> { mapInfo.bounds.b.x, mapInfo.bounds.b.y });
         coordArr.push_back(std::vector<float_t> { mapInfo.bounds.d.x, mapInfo.bounds.d.y });
-        coordArr.push_back(std::vector<float_t> { mapInfo.bounds.c.x, mapInfo.bounds.a.y });
+        coordArr.push_back(std::vector<float_t> { mapInfo.bounds.c.x, mapInfo.bounds.c.y });
         coordArr.push_back(std::vector<float_t> { mapInfo.bounds.a.x, mapInfo.bounds.a.y });
 
         normalizePolygon(coordArr);
@@ -141,30 +144,22 @@ void writeHouses(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson
 
         float_t houseHeight = 0.0;
         std::array<float, 3> housePos = { 0, 0, 0 };
-        for (auto &object : wrp.objects)
-        {
-            if (object.object_id == mapInfo.object_id)
-            {
 
-                /*if (wrp.objects.find(mapInfo4Ptr->objectId) != wrp.objectIdMap.end()) {
-                    auto& object = wrp.objectIdMap.at(mapInfo4Ptr->objectId);*/
+        if (auto objectPair = objectMap.find(mapInfo.object_id); objectPair != objectMap.end()) {
+            auto object = objectPair->second;
 
-                housePos[0] = object.transform_matrx._3.x;// [3] [0] ;
-                housePos[1] = object.transform_matrx._3.z;// [3] [2] ;
-                housePos[2] = object.transform_matrx._3.y;// [3] [1] ;
+            housePos[0] = object.transform_matrx._3.x;
+            housePos[1] = object.transform_matrx._3.z;
+            housePos[2] = object.transform_matrx._3.y;
 
-                if (object.model_index < wrp.models.size()) {
-                    auto& objectModel = modelInfos[object.model_index];
-
-                    houseHeight = objectModel.b_max.y/*[1]*/ - objectModel.b_min.y/*[1]*/;
-                }
-                break;
+            if (object.model_index < wrp.models.size()) {
+                auto& objectModel = modelInfos[object.model_index];
+                houseHeight = objectModel.b_max.y - objectModel.b_min.y;
             }
         }
 
         mapFeature["properties"] = { { "color", color }, { "height", houseHeight }, { "position", housePos } };
         house.push_back(mapFeature);
-        //}
     }
     writeGZJson("house.geojson.gz", basePathGeojson, house);
 }
@@ -192,6 +187,8 @@ void writeObjects(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojso
     //}
     //writeGZJson("debug.geojson.gz", basePathGeojson, house);
 }
+
+static std::vector<uint8_t> esri_shape_magic = { 0, 0, 0x27, 0x0A };
 
 void writeRoads(
     rvff::cxx::OprwCxx& wrp,
@@ -232,7 +229,6 @@ void writeRoads(
         for (auto& entry : roads_pbo->get_pbo().entries) {
             if (boost::istarts_with((((fs::path)static_cast<std::string>(prefix)) / static_cast<std::string>(entry.filename)).string(), roadsPathDir)) {
                 roads_pbo->extract_single_file(static_cast<std::string>(entry.filename), basePathGeojsonTemp.string(), false);
-                //roads_pbo->extract_single_file(key, basePathGeojsonTemp);
             }
         }
 
@@ -278,7 +274,33 @@ void writeRoads(
         }
         papszMetadata = poDriver->GetMetadata();
 
-        GDALDatasetH poDatasetH = GDALOpenEx((basePathGeojsonTemp / "roads.shp").string().c_str(), GDAL_OF_VECTOR, NULL, NULL, NULL);
+        auto shape_path = (basePathGeojsonTemp / "roads.shp").string();
+        auto index_path = (basePathGeojsonTemp / "roads.shx").string();
+        auto dbase_path = (basePathGeojsonTemp / "roads.dbf").string();
+
+        try {
+            if (rvff::cxx::check_for_magic_and_decompress_lzss_file(shape_path, esri_shape_magic)) {
+                PLOG_INFO << fmt::format("Decompressed LZSS compressed shape file ({})", shape_path);
+            }
+            if (rvff::cxx::check_for_magic_and_decompress_lzss_file(index_path, esri_shape_magic)) {
+                PLOG_INFO << fmt::format("Decompressed LZSS compressed index file ({})", index_path);
+            }
+            // Magic contains last update date (https://www.dbase.com/Knowledgebase/INT/db7_file_fmt.htm)
+            if (rvff::cxx::check_for_magic_and_decompress_lzss_file(dbase_path, { 0x03, 0x5F })) {
+                PLOG_INFO << fmt::format("Decompressed LZSS compressed dbase file ({})", dbase_path);
+            }
+        }
+        catch (const rust::Error& ex) {
+            PLOG_WARNING << fmt::format("Exception during magic/lzss check: {})", ex.what());
+        }
+        GDALDatasetH poDatasetH = GDALOpenEx(shape_path.c_str(), GDAL_OF_VECTOR, NULL, NULL, NULL);
+
+        // Invalid shp/shx file (or lzss compressed?)
+        if (poDatasetH == nullptr)
+        {
+            PLOG_ERROR << fmt::format("Couldn't open roads.shp at {}", shape_path);
+            throw std::runtime_error("Couldn't open roads.shp");
+        }
 
         GDALDataset* poDataset = (GDALDataset*)poDatasetH;
         GDALDataset* poDstDS;
@@ -305,34 +327,39 @@ void writeRoads(
         GDALClose(poDatasetH);
         GDALClose(poDstDS);
         GDALVectorTranslateOptionsFree(gdalOptions);
-
-        auto road_config = rvff::cxx::create_cfg_path((basePathGeojsonTemp / "roadslib.cfg").string());
-
+        
         std::map<uint32_t, std::pair<float_t, std::string>> roadWidthMap = {};
 
-        auto entries = road_config->get_entry_as_entries(std::vector < std::string> { "RoadTypesLibrary" });
-        for (auto& entry : entries)
-        {
-            try {
-                auto _class = entry.get_entry_as_class();
-                auto class_name = static_cast<std::string>(_class->get_class_name());
-                auto map = static_cast<std::string>(_class->get_entry_as_string(std::vector < std::string> { "map" }));
-                auto width = _class->get_entry_as_number(std::vector < std::string> { "width" });
+        try {
+            auto road_config = rvff::cxx::create_cfg_path((basePathGeojsonTemp / "roadslib.cfg").string());
 
-                auto map_fixed = boost::replace_all_copy(map, " ", "_");
-                auto class_name_fixed = std::stoi(class_name.substr(4));
+            auto entries = road_config->get_entry_as_entries(std::vector < std::string> { "RoadTypesLibrary" });
+            for (auto& entry : entries)
+            {
+                try {
+                    auto _class = entry.get_entry_as_class();
+                    auto class_name = static_cast<std::string>(_class->get_class_name());
+                    auto map = static_cast<std::string>(_class->get_entry_as_string(std::vector < std::string> { "map" }));
+                    auto width = _class->get_entry_as_number(std::vector < std::string> { "width" });
 
-                std::pair<float_t, std::string> roadPair = {};
-                roadWidthMap.insert({ class_name_fixed, std::make_pair(width, map_fixed) });
+                    auto map_fixed = boost::replace_all_copy(map, " ", "_");
+                    auto class_name_fixed = std::stoi(class_name.substr(4));
 
-                spdlog::info(static_cast<std::string>(map));
-                spdlog::info(width);
-            }
-            catch (const rust::Error& ex) {
-                spdlog::error(ex.what());
+                    std::pair<float_t, std::string> roadPair = {};
+                    roadWidthMap.insert({ class_name_fixed, std::make_pair(width, map_fixed) });
+
+                    PLOG_DEBUG << static_cast<std::string>(map);
+                    PLOG_DEBUG << width;
+                }
+                catch (const rust::Error& ex) {
+                    PLOG_ERROR << ex.what();
+                }
             }
         }
-
+        catch (const rust::Error& ex) {
+            PLOG_ERROR << fmt::format("Exception in roadslib.cfg parsing");
+            throw;
+        }
         // calc additional roads
         std::vector<std::string> roadTypes = { "road", "main road", "track" };
         auto additionalRoads = std::map<std::string, std::vector<std::array<SimplePoint, 4>>>{};
@@ -345,13 +372,13 @@ void writeRoads(
                         correctedRoadType = "main_road";
                     }
 
-                    auto r11 = road.first.transform_matrx._0.x;// [0][0];
-                    auto r13 = road.first.transform_matrx._0.z;// [0][2];
+                    auto r11 = road.first.transform_matrx._0.x;
+                    auto r13 = road.first.transform_matrx._0.z;
 
                     auto r34 = 0;
-                    auto r31 = road.first.transform_matrx._2.x;// [2][0];
-                    auto r32 = road.first.transform_matrx._2.y;// [2][1];
-                    auto r33 = road.first.transform_matrx._2.z;// [2][2];
+                    auto r31 = road.first.transform_matrx._2.x;
+                    auto r32 = road.first.transform_matrx._2.y;
+                    auto r33 = road.first.transform_matrx._2.z;
 
                     // calculate rotation in RADIANS
                     auto theta = std::atan2(-1 * r31, std::sqrt(std::pow(r32, 2) + std::pow(r33, 2)));
@@ -364,8 +391,8 @@ void writeRoads(
                     }
 
                     // Corrected center pos
-                    auto centerCorX = road.first.transform_matrx._3.x/*[3][0]*/ - road.second.b_center.x;// [0] ;
-                    auto centerCorY = road.first.transform_matrx._3.z/*[3][2]*/ - road.second.b_center.z;// [2] ;
+                    auto centerCorX = road.first.transform_matrx._3.x - road.second.b_center.x;
+                    auto centerCorY = road.first.transform_matrx._3.z - road.second.b_center.z;
 
                     // calc rotated pos of corner 
                     // https://gamedev.stackexchange.com/a/86780
@@ -383,7 +410,7 @@ void writeRoads(
                     rvff::cxx::XYZTripletCxx pe = {};
                     std::optional<rvff::cxx::XYZTripletCxx> map3Triplet = {};
                     for (auto& namedSelection : road.second.named_selection) {
-                        spdlog::info(fmt::format("NamedName: {}", static_cast<std::string>(namedSelection.name)));
+                        PLOG_DEBUG << fmt::format("NamedName: {}", static_cast<std::string>(namedSelection.name));
                         if (static_cast<std::string>(namedSelection.name) == "lb") {
                             lb = road.second.vertices[namedSelection.selected_vertices.edges[0]];
                         }
@@ -398,31 +425,17 @@ void writeRoads(
                         }
                     }
 
-                    auto x0 = centerCorX + (lb.x/*[0]*/ * std::cos(theta)) - (lb.z/*[2]*/ * std::sin(theta));
-                    auto y0 = centerCorY + (lb.x/*[0]*/ * std::sin(theta)) + (lb.z/*[2]*/ * std::cos(theta));
+                    auto x0 = centerCorX + (lb.x * std::cos(theta)) - (lb.z * std::sin(theta));
+                    auto y0 = centerCorY + (lb.x * std::sin(theta)) + (lb.z * std::cos(theta));
 
-                    auto x1 = centerCorX + (le.x/*[0]*/ * std::cos(theta)) - (le.z/*[2]*/ * std::sin(theta));
-                    auto y1 = centerCorY + (le.x/*[0]*/ * std::sin(theta)) + (le.z/*[2]*/ * std::cos(theta));
+                    auto x1 = centerCorX + (le.x * std::cos(theta)) - (le.z * std::sin(theta));
+                    auto y1 = centerCorY + (le.x * std::sin(theta)) + (le.z * std::cos(theta));
 
-                    auto x2 = centerCorX + (pe.x/*[0]*/ * std::cos(theta)) - (pe.z/*[2]*/ * std::sin(theta));
-                    auto y2 = centerCorY + (pe.x/*[0]*/ * std::sin(theta)) + (pe.z/*[2]*/ * std::cos(theta));
+                    auto x2 = centerCorX + (pe.x * std::cos(theta)) - (pe.z * std::sin(theta));
+                    auto y2 = centerCorY + (pe.x * std::sin(theta)) + (pe.z * std::cos(theta));
 
-                    auto x3 = centerCorX + (pb.x/*[0]*/ * std::cos(theta)) - (pb.z/*[2]*/ * std::sin(theta));
-                    auto y3 = centerCorY + (pb.x/*[0]*/ * std::sin(theta)) + (pb.z/*[2]*/ * std::cos(theta));
-
-                    /*
-                    auto x0 = centerCorX + (road.second.bMin[0] * std::cos(theta)) - (road.second.bMin[2] * std::sin(theta));
-                    auto y0 = centerCorY + (road.second.bMin[0] * std::sin(theta)) + (road.second.bMin[2] * std::cos(theta));
-
-                    auto x1 = centerCorX + (road.second.bMin[0] * std::cos(theta)) - (road.second.bMax[2] * std::sin(theta));
-                    auto y1 = centerCorY + (road.second.bMin[0] * std::sin(theta)) + (road.second.bMax[2] * std::cos(theta));
-
-                    auto x2 = centerCorX + (road.second.bMax[0] * std::cos(theta)) - (road.second.bMax[2] * std::sin(theta));
-                    auto y2 = centerCorY + (road.second.bMax[0] * std::sin(theta)) + (road.second.bMax[2] * std::cos(theta));
-
-                    auto x3 = centerCorX + (road.second.bMax[0] * std::cos(theta)) - (road.second.bMin[2] * std::sin(theta));
-                    auto y3 = centerCorY + (road.second.bMax[0] * std::sin(theta)) + (road.second.bMin[2] * std::cos(theta));
-                    */
+                    auto x3 = centerCorX + (pb.x * std::cos(theta)) - (pb.z * std::sin(theta));
+                    auto y3 = centerCorY + (pb.x * std::sin(theta)) + (pb.z * std::cos(theta));
 
                     std::array<SimplePoint, 4> rectangle = { SimplePoint(x0,y0), SimplePoint(x1,y1), SimplePoint(x2,y2),SimplePoint(x3,y3) };
 
@@ -450,18 +463,17 @@ void writeRoads(
                 coordsUpdate.push_back(coords);
             }
             feature["geometry"]["coordinates"] = coordsUpdate;
+            
+            // empty property happens when dbase file is invalid/compressed
+            auto propId = feature["properties"]["ID"];
+            if (!propId.is_number_integer()) {
+                PLOG_WARNING << "Skipping feature with 'null' ID";
+                break;
+            }
 
-            int32_t jId = feature["properties"]["ID"];
+            int32_t jId = propId;// feature["properties"]["ID"];
             feature["properties"].clear();
             feature["properties"]["width"] = roadWidthMap[jId].first;
-
-            //auto ogrGeometry = OGRGeometryFactory::createFromGeoJson(feature["geometry"].dump().c_str());
-            //ogrGeometry = ogrGeometry->Buffer(roadWidthMap[jId].first * GRAD_MEH_ROAD_WITH_FACTOR);
-
-            //auto ret = ogrGeometry->exportToJson();
-            //feature["geometry"] = nl::json::parse(ret);
-            //CPLFree(ret);
-            //OGRGeometryFactory::destroyGeometry(ogrGeometry);
 
             auto kvp = roadMap.find(roadWidthMap[jId].second);
             if (kvp == roadMap.end()) {
@@ -503,39 +515,11 @@ void writeRoads(
             writeGZJson((key + std::string("-bridge.geojson.gz")), basePathGeojsonRoads, bridge);
         }
 
-        /*
-        for (auto& [key, value] : roadMap) {
-            // Append additional roads
-            auto kvp = additionalRoads.find(key);
-            if (kvp != additionalRoads.end()) {
-                for (auto& rectangles : kvp->second) {
-                    nl::json addtionalRoadJson;
-
-                    nl::json geometry;
-                    geometry["type"] = "Polygon";
-                    geometry["coordinates"].push_back({ nl::json::array() });
-                    for (auto& point : rectangles) {
-                        nl::json points = nl::json::array();
-                        points.push_back(point.x);
-                        points.push_back(point.y);
-                        geometry["coordinates"][0].push_back(points);
-                    }
-
-                    addtionalRoadJson["geometry"] = geometry;
-                    addtionalRoadJson["properties"] = nl::json::object();
-                    addtionalRoadJson["type"] = "Feature";
-
-                    value.push_back(addtionalRoadJson);
-                }
-            }
-            writeGZJson((key + std::string(".geojson.gz")), basePathGeojsonRoads, value);
-        }
-        */
     }
     catch (const rust::Error& ex) {
-        spdlog::error(fmt::format("Exception in writeRoads"));
-        log_error(ex);
-        throw ex;
+        PLOG_ERROR << fmt::format("Exception in writeRoads");
+        PLOG_ERROR << ex.what();
+        throw;
     }
 
     // Remove temp dir
@@ -546,8 +530,7 @@ void writeSpecialIcons(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson, uint3
 
     auto treeLocations = nl::json();
     for (auto& mapInfo : wrp.map_infos_1) {
-        if (/*mapInfo->mapType == 1 && */mapInfo.type_id == id) {
-            //auto mapInfo1Ptr = std::static_pointer_cast<MapType1>(mapInfo);
+        if (mapInfo.type_id == id) {
 
             auto pointFeature = nl::json();
             pointFeature["type"] = "Feature";
@@ -697,8 +680,8 @@ void writeGenericMapTypes(fs::path& basePathGeojson, const std::vector<std::pair
         geometry["type"] = "Point";
 
         auto posArray = nl::json::array();
-        posArray.push_back(pair.first.transform_matrx._3.x/*[3][0]*/);
-        posArray.push_back(pair.first.transform_matrx._3.z/*[3][2]*/);
+        posArray.push_back(pair.first.transform_matrx._3.x);
+        posArray.push_back(pair.first.transform_matrx._3.z);
         geometry["coordinates"] = posArray;
 
         pointFeature["geometry"] = geometry;
@@ -713,8 +696,6 @@ void writePowerlines(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson) {
     nl::json powerline = nl::json::array();
 
     for (auto& mapInfo : wrp.map_infos_5) {
-        //if (mapInfo->mapType == 5) {
-            //auto mapInfo5Ptr = std::static_pointer_cast<MapType5>(mapInfo);
         nl::json mapFeature;
         mapFeature["type"] = "Feature";
 
@@ -726,7 +707,6 @@ void writePowerlines(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson) {
         mapFeature["properties"] = nl::json::object();
 
         powerline.push_back(mapFeature);
-        //}
     }
     if (!powerline.empty())
         writeGZJson("powerline.geojson.gz", basePathGeojson, powerline);
@@ -743,27 +723,37 @@ void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<rvff::
         rvff::cxx::XYZTripletCxx map2Triplet;
         std::optional<rvff::cxx::XYZTripletCxx> map3Triplet;
         for (auto& namedSelection : objectPair.second.named_selection) {
+            rvff::cxx::XYZTripletCxx triplet = {};
+            if (!namedSelection.vertex_indices.empty()) {
+                auto vertex_index = namedSelection.vertex_indices[0];
+                triplet = objectPair.second.vertices[vertex_index];
+            }
+            else if (!namedSelection.selected_vertices.edges.empty()) { // for older p3ds
+                auto vertex_index = namedSelection.selected_vertices.edges[0];
+                triplet = objectPair.second.vertices[vertex_index];
+            }
+
             if (namedSelection.name == "map1") {
-                map1Triplet = objectPair.second.normals[namedSelection.vertex_indices[0]];
+                map1Triplet = triplet;//objectPair.second.normals[vertex_index];
             }
             if (namedSelection.name == "map2") {
-                map2Triplet = objectPair.second.normals[namedSelection.vertex_indices[0]];
+                map2Triplet = triplet;//objectPair.second.normals[vertex_index];
             }
             if (namedSelection.name == "map3") {
-                map3Triplet = objectPair.second.normals[namedSelection.vertex_indices[0]];
+                map3Triplet = triplet;//objectPair.second.normals[vertex_index];
             }
         }
 
-        auto xPos = objectPair.first.transform_matrx._3.x;// [3] [0] ;
-        auto yPos = objectPair.first.transform_matrx._3.z;// [3] [2] ;
+        auto xPos = objectPair.first.transform_matrx._3.x;
+        auto yPos = objectPair.first.transform_matrx._3.z;
 
-        auto r11 = objectPair.first.transform_matrx._0.x;// [0] [0] ;
-        auto r13 = objectPair.first.transform_matrx._0.z;// [0] [2] ;
+        auto r11 = objectPair.first.transform_matrx._0.x;
+        auto r13 = objectPair.first.transform_matrx._0.z;
 
         auto r34 = 0;
-        auto r31 = objectPair.first.transform_matrx._2.x;// [2] [0] ;
-        auto r32 = objectPair.first.transform_matrx._2.y;// [2] [1] ;
-        auto r33 = objectPair.first.transform_matrx._2.z;// [2] [2] ;
+        auto r31 = objectPair.first.transform_matrx._2.x;
+        auto r32 = objectPair.first.transform_matrx._2.y;
+        auto r33 = objectPair.first.transform_matrx._2.z;
 
         // calculate rotation in RADIANS
         auto theta = std::atan2(-1 * r31, std::sqrt(std::pow(r32, 2) + std::pow(r33, 2)));
@@ -775,11 +765,11 @@ void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<rvff::
             theta = std::atan2(-1 * r31, r11);
         }
 
-        auto startPosX = xPos + (map1Triplet.x/*[0]*/ * std::cos(theta)) - (map1Triplet.z/*[2]*/ * std::sin(theta));
-        auto startPosY = yPos + (map1Triplet.x/*[0]*/ * std::sin(theta)) + (map1Triplet.z/*[2]*/ * std::cos(theta));
+        auto startPosX = xPos + (map1Triplet.x * std::cos(theta)) - (map1Triplet.z * std::sin(theta));
+        auto startPosY = yPos + (map1Triplet.x * std::sin(theta)) + (map1Triplet.z * std::cos(theta));
 
-        auto endPosX = xPos + (map2Triplet.x/*[0]*/ * std::cos(theta)) - (map2Triplet.z/*[2]*/ * std::sin(theta));
-        auto endPosY = yPos + (map2Triplet.x/*[0]*/ * std::sin(theta)) + (map2Triplet.z/*[2]*/ * std::cos(theta));
+        auto endPosX = xPos + (map2Triplet.x * std::cos(theta)) - (map2Triplet.z * std::sin(theta));
+        auto endPosY = yPos + (map2Triplet.x * std::sin(theta)) + (map2Triplet.z * std::cos(theta));
 
         nl::json railwayFeature;
         railwayFeature["type"] = "Feature";
@@ -798,8 +788,8 @@ void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<rvff::
             railwaySwitchFeature["type"] = "Feature";
 
             auto coordArr = nl::json::array();
-            auto switchStartPosX = xPos + ((*map3Triplet).x/*[0]*/ * std::cos(theta)) - ((*map3Triplet).z/*[2]*/ * std::sin(theta));
-            auto switchStartPosY = yPos + ((*map3Triplet).x/*[0]*/ * std::sin(theta)) + ((*map3Triplet).z/*[2]*/ * std::cos(theta));
+            auto switchStartPosX = xPos + ((*map3Triplet).x * std::cos(theta)) - ((*map3Triplet).z * std::sin(theta));
+            auto switchStartPosY = yPos + ((*map3Triplet).x * std::sin(theta)) + ((*map3Triplet).z * std::cos(theta));
 
             coordArr.push_back({ switchStartPosX, switchStartPosY });
             coordArr.push_back({ endPosX, endPosY });
@@ -808,7 +798,6 @@ void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<rvff::
             railwaySwitchFeature["properties"] = nl::json::object();
             railways.push_back(railwaySwitchFeature);
         }
-
     }
     writeGZJson("railway.geojson.gz", basePathGeojson, railways);
 }
@@ -832,51 +821,48 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
         }
 
         auto pboPath = findPboPath(modelPath);
-
-        if (pboPath.empty()) {
-            spdlog::warn(fmt::format("Couldn't find path for model: {}", modelPath));
-            modelMapTypes[i] = {};
-            modelInfos[i] = {};
-            break;
-        }
-
-        //pboMap.contains()
-        /*auto res = pboMap.find(pboPath);
-        if (res == pboMap.end()) {*/
-        if (pboMap.count(pboPath) < 1) {
-            pboMap.emplace(pboPath, std::move(rvff::cxx::create_pbo_reader_path(pboPath.string())));
-        }
-
-        int rvffIndex = -1;
-        int affIndex = -1;
-
-        auto p3dData = pboMap.find(pboPath)->second->get_entry_data(modelPath);
-
-        if (p3dData.empty())
-        {
-            spdlog::warn(fmt::format("Couldn't get data for model: {} (PBO: {})", modelPath, pboPath.string()));
-            modelMapTypes[i] = {};
-            modelInfos[i] = {};
-            break;
-        }
         try {
-            spdlog::info(fmt::format("Reading P3D: {} (PBO: {})", modelPath, pboPath.string()));
+            if (pboPath.empty()) {
+                PLOG_WARNING << fmt::format("Couldn't find path for model: {}", modelPath);
+                modelMapTypes[i] = {};
+                modelInfos[i] = {};
+                break;
+            }
+
+            if (pboMap.count(pboPath) < 1) {
+                pboMap.emplace(pboPath, std::move(rvff::cxx::create_pbo_reader_path(pboPath.string())));
+            }
+
+            int rvffIndex = -1;
+            int affIndex = -1;
+
+            auto p3dData = pboMap.find(pboPath)->second->get_entry_data(modelPath);
+
+            if (p3dData.empty())
+            {
+                PLOG_WARNING << fmt::format("Couldn't get data for model: {} (PBO: {})", modelPath, pboPath.string());
+                modelMapTypes[i] = {};
+                modelInfos[i] = {};
+                break;
+            }
+
+            PLOG_INFO << fmt::format("Reading P3D: {} (PBO: {})", modelPath, pboPath.string());
             auto odol_reader = rvff::cxx::create_odol_lazy_reader_vec(p3dData);
             auto odol2 = odol_reader->get_odol();
 
             rvff::cxx::LodCxx lod = {};
 
             bool foundGeoLod = false;
-            bool foundSpecialLod = false;
+            bool foundMemoryLod = false;
             for (auto& res : odol2.resolutions)
             {
                 if (res.res == rvff::cxx::ResolutionEnumCxx::Geometry) {
                     foundGeoLod = true;
                 }
-                else if (res.res == rvff::cxx::ResolutionEnumCxx::GraphicalLod) {
-                    foundSpecialLod = true;
+                else if (res.res == rvff::cxx::ResolutionEnumCxx::Memory) {
+                    foundMemoryLod = true;
                 }
-                if (foundGeoLod && foundSpecialLod) {
+                if (foundGeoLod && foundMemoryLod) {
                     break;
                 }
             }
@@ -890,7 +876,7 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
                     if (static_cast<std::string>(prop.property) == "map")
                     {
                         auto val = static_cast<std::string>(prop.value);
-                        if ((val == "railway" || val == "road" || val == "track" || val == "main road") && foundSpecialLod) {
+                        if ((val == "railway" || val == "road" || val == "track" || val == "main road") && foundMemoryLod) {
                             lod = odol_reader->read_lod(rvff::cxx::ResolutionEnumCxx::Memory);
                             rvffIndex = 2;
                         }
@@ -900,76 +886,18 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
                         break;
                     }
                 }
-
-
             }
         }
         catch (const rust::Error& ex) {
-            spdlog::error(fmt::format("Exception while reading P3D: {} (PBO: {})", modelPath, pboPath.string()));
-            log_error(ex);
-            throw ex;
+            PLOG_ERROR << fmt::format("Exception while handling models P3D: {} (PBO: {})", modelPath, pboPath.string());
+            PLOG_ERROR << ex.what();
+            throw;
         }
-
-        //auto odol = grad_aff::Odol(p3dData);
-        //odol.readOdol(false);
-
-        //odol.peekLodTypes();
-
-        //auto geoIndex = -1;
-        //for (int j = 0; j < odol.lods.size(); j++) {
-        //    if (odol.lods[j].lodType == LodType::GEOMETRY) {
-        //        geoIndex = j;
-        //    }
-        //}
-
-        //if (geoIndex != -1) {
-        //    auto retLod = odol.readLod(geoIndex);
-        //    affIndex = 1;
-
-        //    auto findClass = retLod.tokens.find("map");
-        //    if (findClass != retLod.tokens.end()) {
-        //        if (findClass->second == "railway" || findClass->second == "road" || findClass->second == "track" || findClass->second == "main road") {
-        //            geoIndex = -1;
-        //            for (int j = 0; j < odol.lods.size(); j++) {
-        //                if (odol.lods[j].lodType == LodType::SPECIAL_LOD) {
-        //                    geoIndex = j;
-        //                    affIndex = 1;
-        //                    break;
-        //                }
-        //                if (geoIndex == -1 && odol.lods[j].lodType == LodType::GEOMETRY) { // Fallback
-        //                    geoIndex = j; 
-        //                    affIndex = 2;
-        //                }
-        //            }
-        //            auto memLod = odol.readLod(geoIndex);
-        //            modelMapTypes[i] = { findClass->second, memLod };
-        //            modelInfos[i] = memLod;
-        //        }
-        //        else {
-        //            modelMapTypes[i] = { findClass->second, retLod };
-        //            modelInfos[i] = retLod;
-        //        }
-        //    }
-        //}
-
-        /*if (rvffIndex != affIndex)
-        {
-            spdlog::error(fmt::format("Wrong Index (rvff: {}, aff: {}) while reading P3D: {} (PBO: {})", rvffIndex, affIndex,  modelPath, pboPath.string()));
-        }*/
-
     }
 
     // mapType, [object, lod]
     std::map<std::string, std::vector<std::pair<rvff::cxx::ObjectCxx, LodCxx&>>> objectMap = {};
-    /*
-    std::vector<Point_> forestPositions = {};
-    std::vector<Point_> forestSquarePositions = {};
-    std::vector<Point_> forestTrianglePositions = {};
-    std::vector<Point_> forestBroderPositions = {};
 
-    std::vector<Point_> forestFeulStatPositions = {};
-    std::vector<Point_> forestBroderPositions = {};
-    */
     for (auto& object : wrp.objects) {
         auto mapType = modelMapTypes[object.model_index].first;
         auto res = objectMap.find(mapType);
@@ -979,16 +907,6 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
         else {
             objectMap.insert({ mapType, {{object, modelMapTypes[object.model_index].second}} });
         }
-        /*
-        if (!forestModels[index].empty()) {
-            Point_ p;
-            p.x = object.transformMatrix[3][0];
-            p.y = object.transformMatrix[3][2];
-            p.z = 0;
-            p.clusterID = UNCLASSIFIED;
-            forestPositions.push_back(p);
-        }
-        */
     }
 
     std::vector<std::string> genericMapTypes = { "bunker", "chapel", "church", "cross", "fuelstation", "lighthouse", "rock", "shipwreck", "transmitter", "tree", "rock", "watertower",

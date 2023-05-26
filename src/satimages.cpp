@@ -71,205 +71,216 @@ uint32_t calcOverLap(rvff::cxx::MipmapCxx& mipmap1, rvff::cxx::MipmapCxx& mipmap
 
 void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::filesystem::path& basePathSat, const std::string& worldName)
 {
-    std::vector<std::string> rvmats = {};
-    for (auto& rv : wrp.texures) {
-        if (!rv.texture_filename.empty()) {
-            rvmats.push_back(static_cast<std::string>(rv.texture_filename));
-        }
-    }
-
-    std::sort(rvmats.begin(), rvmats.end());
-
-    if (rvmats.size() > 1) {
-        std::vector<std::string> lcoPaths = {};
-        lcoPaths.reserve(rvmats.size());
-
-        auto rvmatPbo = rvff::cxx::create_pbo_reader_path(findPboPath(rvmats[0]).string());
-
-        // Has to be not empty
-        std::string lastValidRvMat = "1337";
-        std::string fillerTile = "";
-        std::string prefix = "s_";
-
-        uint32_t maxX2 = 0;
-        uint32_t maxY2 = 0;
-
-        std::vector<std::string> texture_config_path{ "Stage0", "texture" };
-
-        // TODO: refactor this when implementing the new rap api
-        for (auto& rvmatPath : rvmats) {
-
-            std::vector<std::string> parts;
-            boost::split(parts, ((fs::path)rvmatPath).filename().string(), boost::is_any_of("_"));
-
-            if (parts.size() > 1) {
-                std::vector<std::string> numbers;
-                boost::split(numbers, parts[1], boost::is_any_of("-"));
-
-                if (numbers.size() > 1) {
-                    auto x = std::stoi(numbers[0]);
-                    auto y = std::stoi(numbers[1]);
-
-                    if (x > maxX2) {
-                        maxX2 = x;
-                    }
-
-                    if (y > maxY2) {
-                        maxY2 = y;
-                    }
-                }
+        std::vector<std::string> rvmats = {};
+        for (auto& rv : wrp.texures) {
+            if (!rv.texture_filename.empty()) {
+                rvmats.push_back(static_cast<std::string>(rv.texture_filename));
             }
+        }
 
-            if (!boost::istarts_with(((fs::path)rvmatPath).filename().string(), lastValidRvMat)) {
-                auto rap_data = rvmatPbo->get_entry_data(rvmatPath);
-                auto rap = rvff::cxx::create_cfg_vec(rap_data);
-                auto textureStr = static_cast<std::string>(rap->get_entry_as_string(texture_config_path));
-                if (!textureStr.empty()) {
-                    auto rvmatFilename = ((fs::path)textureStr).filename().string();
-                    if (!boost::istarts_with(rvmatFilename, prefix)) {
-                        if (fillerTile == "") {
-                            fillerTile = textureStr;
+        std::sort(rvmats.begin(), rvmats.end());
+
+        if (rvmats.size() > 1) {
+            std::vector<std::string> lcoPaths = {};
+            lcoPaths.reserve(rvmats.size());
+
+            std::string pboPath = "";
+            try {
+                pboPath = findPboPath(rvmats[0]).string();
+                auto rvmatPbo = rvff::cxx::create_pbo_reader_path(pboPath);
+
+                // Has to be not empty
+                std::string lastValidRvMat = "1337";
+                std::string fillerTile = "";
+                std::string prefix = "s_";
+
+                uint32_t maxX2 = 0;
+                uint32_t maxY2 = 0;
+
+                std::vector<std::string> texture_config_path{ "Stage0", "texture" };
+
+                // TODO: refactor this when implementing the new rap api
+                for (auto& rvmatPath : rvmats) {
+
+                    std::vector<std::string> parts;
+                    boost::split(parts, ((fs::path)rvmatPath).filename().string(), boost::is_any_of("_"));
+
+                    if (parts.size() > 1) {
+                        std::vector<std::string> numbers;
+                        boost::split(numbers, parts[1], boost::is_any_of("-"));
+
+                        if (numbers.size() > 1) {
+                            auto x = std::stoi(numbers[0]);
+                            auto y = std::stoi(numbers[1]);
+
+                            if (x > maxX2) {
+                                maxX2 = x;
+                            }
+
+                            if (y > maxY2) {
+                                maxY2 = y;
+                            }
                         }
                     }
-                    else {
-                        lcoPaths.push_back(textureStr);
-                        lastValidRvMat = rvmatFilename.substr(0, 9);
+
+                    if (!boost::istarts_with(((fs::path)rvmatPath).filename().string(), lastValidRvMat)) {
+                        PLOG_INFO << fmt::format("Getting data for {}", rvmatPath);
+                        auto rap_data = rvmatPbo->get_entry_data(rvmatPath);
+                        PLOG_INFO << fmt::format("Parsing rvmat {}", rvmatPath);
+                        auto rap = rvff::cxx::create_cfg_vec(rap_data);
+                        auto textureStr = static_cast<std::string>(rap->get_entry_as_string(texture_config_path));
+                        if (!textureStr.empty()) {
+                            auto rvmatFilename = ((fs::path)textureStr).filename().string();
+                            if (!boost::istarts_with(rvmatFilename, prefix)) {
+                                if (fillerTile == "") {
+                                    fillerTile = textureStr;
+                                }
+                            }
+                            else {
+                                lcoPaths.push_back(textureStr);
+                                lastValidRvMat = rvmatFilename.substr(0, 9);
+                            }
+                        }
                     }
                 }
-            }
-        }
 
-        // Remove Duplicates
-        std::sort(lcoPaths.begin(), lcoPaths.end());
-        auto last = std::unique(lcoPaths.begin(), lcoPaths.end());
-        lcoPaths.erase(last, lcoPaths.end());
+                // Remove Duplicates
+                std::sort(lcoPaths.begin(), lcoPaths.end());
+                auto last = std::unique(lcoPaths.begin(), lcoPaths.end());
+                lcoPaths.erase(last, lcoPaths.end());
 
-        // Fix wrong file extensions (cup summer has png exten
-        for (auto& lcoPath : lcoPaths) {
-            fs::path lcoPathAsPath = (fs::path)lcoPath;
-            if (!boost::iequals(lcoPathAsPath.extension().string(), ".paa")) {
-                lcoPath = lcoPathAsPath.replace_extension(".paa").string();
-            }
-        }
-
-        // "strechted border" overlap is og overlap/2
-
-        // find highest x/y
-        std::vector<std::string> splitResult = {};
-        boost::split(splitResult, ((fs::path)lcoPaths[lcoPaths.size() - 1]).filename().string(), boost::is_any_of("_"));
-        uint32_t maxX = maxX2; //std::stoi(splitResult[1]);
-        uint32_t maxY = maxY2; //std::stoi(splitResult[2]);
-
-        // find two tiles "in the middle"
-        uint32_t x = maxX / 2;
-        uint32_t y = maxY / 2;
-
-        prefix = "00";
-
-        if (y > 9 && y < 100) {
-            prefix = "0";
-        }
-        else if (y >= 100) {
-            prefix = "";
-        }
-
-        std::stringstream upperLcoPathStream;
-        upperLcoPathStream << x << "_" << prefix << y << "_lco.paa";
-        auto upperPaaPath = upperLcoPathStream.str();
-
-        std::stringstream lowerLcoPathStream;
-        lowerLcoPathStream << x << "_" << prefix << (y + 1) << "_lco.paa";
-        auto lowerPaaPath = lowerLcoPathStream.str();
-
-        rvff::cxx::MipmapCxx upperMipmap;
-        rvff::cxx::MipmapCxx lowerMipmap;
-
-        for (auto& lcoPath : lcoPaths) {
-            if (boost::iends_with(lcoPath, upperPaaPath)) {
-                auto upperPbo = rvff::cxx::create_pbo_reader_path(findPboPath(lcoPath).string());
-                auto upperData = upperPbo->get_entry_data(lcoPath);
-                upperMipmap = rvff::cxx::get_mipmap_from_paa_vec(upperData, 0);
-            }
-            if (boost::iends_with(lcoPath, lowerPaaPath)) {
-                auto lowerPbo = rvff::cxx::create_pbo_reader_path(findPboPath(lcoPath).string());
-                auto lowerData = lowerPbo->get_entry_data(lcoPath);
-                lowerMipmap = rvff::cxx::get_mipmap_from_paa_vec(lowerData, 0);
-            }
-        }
-
-        auto overlap = calcOverLap(upperMipmap, lowerMipmap);
-
-        ImageBuf dst(ImageSpec(upperMipmap.width + maxX * (upperMipmap.width - overlap), upperMipmap.height + maxY * (upperMipmap.height - overlap), 4, TypeDesc::UINT8));
-
-        if (fillerTile != "") {
-            auto fillerPbo = rvff::cxx::create_pbo_reader_path(findPboPath(fillerTile).string());
-            auto fillerData = fillerPbo->get_entry_data(fillerTile);
-            auto filler_mm = rvff::cxx::get_mipmap_from_paa_vec(fillerData, 0);
-
-            ImageBuf src(ImageSpec(filler_mm.height, filler_mm.height, 4, TypeDesc::UINT8), filler_mm.data.data());
-
-            size_t noOfTiles = (worldSize / filler_mm.height);
-
-            auto cr = boost::counting_range(size_t(0), noOfTiles);
-            std::for_each(std::execution::par_unseq, cr.begin(), cr.end(), [noOfTiles, &dst, filler_mm, src](size_t i) {
-                for (size_t j = 0; j < noOfTiles; j++) {
-                    ImageBufAlgo::paste(dst, (i * filler_mm.height), (j * filler_mm.height), 0, 0, src);
+                // Fix wrong file extensions (cup summer has png extension)
+                for (auto& lcoPath : lcoPaths) {
+                    fs::path lcoPathAsPath = (fs::path)lcoPath;
+                    if (!boost::iequals(lcoPathAsPath.extension().string(), ".paa")) {
+                        lcoPath = lcoPathAsPath.replace_extension(".paa").string();
+                    }
                 }
+
+                // "strechted border" overlap is og overlap/2
+
+                // find highest x/y
+                std::vector<std::string> splitResult = {};
+                boost::split(splitResult, ((fs::path)lcoPaths[lcoPaths.size() - 1]).filename().string(), boost::is_any_of("_"));
+                uint32_t maxX = maxX2;
+                uint32_t maxY = maxY2;
+
+                // find two tiles "in the middle"
+                uint32_t x = maxX / 2;
+                uint32_t y = maxY / 2;
+
+                prefix = "00";
+
+                if (y > 9 && y < 100) {
+                    prefix = "0";
+                }
+                else if (y >= 100) {
+                    prefix = "";
+                }
+
+                std::stringstream upperLcoPathStream;
+                upperLcoPathStream << x << "_" << prefix << y << "_lco.paa";
+                auto upperPaaPath = upperLcoPathStream.str();
+
+                std::stringstream lowerLcoPathStream;
+                lowerLcoPathStream << x << "_" << prefix << (y + 1) << "_lco.paa";
+                auto lowerPaaPath = lowerLcoPathStream.str();
+
+                rvff::cxx::MipmapCxx upperMipmap;
+                rvff::cxx::MipmapCxx lowerMipmap;
+
+                for (auto& lcoPath : lcoPaths) {
+                    if (boost::iends_with(lcoPath, upperPaaPath)) {
+                        auto upperPbo = rvff::cxx::create_pbo_reader_path(findPboPath(lcoPath).string());
+                        auto upperData = upperPbo->get_entry_data(lcoPath);
+                        upperMipmap = rvff::cxx::get_mipmap_from_paa_vec(upperData, 0);
+                    }
+                    if (boost::iends_with(lcoPath, lowerPaaPath)) {
+                        auto lowerPbo = rvff::cxx::create_pbo_reader_path(findPboPath(lcoPath).string());
+                        auto lowerData = lowerPbo->get_entry_data(lcoPath);
+                        lowerMipmap = rvff::cxx::get_mipmap_from_paa_vec(lowerData, 0);
+                    }
+                }
+
+                auto overlap = calcOverLap(upperMipmap, lowerMipmap);
+
+                ImageBuf dst(ImageSpec(upperMipmap.width + maxX * (upperMipmap.width - overlap), upperMipmap.height + maxY * (upperMipmap.height - overlap), 4, TypeDesc::UINT8));
+
+                if (fillerTile != "") {
+                    auto fillerPbo = rvff::cxx::create_pbo_reader_path(findPboPath(fillerTile).string());
+                    auto fillerData = fillerPbo->get_entry_data(fillerTile);
+                    auto filler_mm = rvff::cxx::get_mipmap_from_paa_vec(fillerData, 0);
+
+                    ImageBuf src(ImageSpec(filler_mm.height, filler_mm.height, 4, TypeDesc::UINT8), filler_mm.data.data());
+
+                    size_t noOfTiles = (worldSize / filler_mm.height);
+
+                    auto cr = boost::counting_range(size_t(0), noOfTiles);
+                    std::for_each(std::execution::par_unseq, cr.begin(), cr.end(), [noOfTiles, &dst, filler_mm, src](size_t i) {
+                        for (size_t j = 0; j < noOfTiles; j++) {
+                            ImageBufAlgo::paste(dst, (i * filler_mm.height), (j * filler_mm.height), 0, 0, src);
+                        }
+                    });
+                }
+
+                auto pbo = rvff::cxx::create_pbo_reader_path(findPboPath(lcoPaths[0]).string());
+
+                for (auto& lcoPath : lcoPaths) {
+                    auto data = pbo->get_entry_data(lcoPath);
+
+                    if (data.empty()) {
+                        pbo = rvff::cxx::create_pbo_reader_path(findPboPath(lcoPath).string());
+                        data = pbo->get_entry_data(lcoPath);
+                    }
+
+                    auto lco_mm = rvff::cxx::get_mipmap_from_paa_vec(data, 0);
+
+                    std::vector<std::string> splitResult = {};
+                    boost::split(splitResult, ((fs::path)lcoPath).filename().string(), boost::is_any_of("_"));
+
+                    ImageBuf src(ImageSpec(lco_mm.height, lco_mm.height, 4, TypeDesc::UINT8), lco_mm.data.data());
+
+                    uint32_t x = std::stoi(splitResult[1]);
+                    uint32_t y = std::stoi(splitResult[2]);
+
+                    ImageBufAlgo::paste(dst, (x * lco_mm.height - x * overlap), (y * lco_mm.height - y * overlap), 0, 0, src);
+                }
+
+                // https://github.com/pennyworth12345/A3_MMSI/wiki/Mapframe-Information#stretching-at-edge-tiles
+                maxX += 1;
+
+                auto hasEqualStrechting = (worldSize == (upperMipmap.width * maxX)) || (worldSize == ((upperMipmap.width - overlap) * maxX));
+                int32_t strechedBorderSizeStart = overlap / 2;
+                int32_t strechedBorderSizeEnd = strechedBorderSizeStart;
+
+                if (!hasEqualStrechting) {
+                    int32_t tileSizeAfterOverlap = upperMipmap.width - overlap;
+                    int32_t temp = (tileSizeAfterOverlap * maxX) - worldSize;
+                    temp -= (overlap / 2);
+                    int32_t lastTileRealWidth = (tileSizeAfterOverlap - temp) % upperMipmap.width;
+                    strechedBorderSizeEnd = upperMipmap.width - lastTileRealWidth;
+                }
+
+                dst = ImageBufAlgo::cut(dst, ROI(strechedBorderSizeStart, dst.spec().width - strechedBorderSizeEnd, strechedBorderSizeStart, dst.spec().height - strechedBorderSizeEnd));
+                size_t tileSize = dst.spec().width / 4;
+
+                auto cr = boost::counting_range(0, 4);
+                std::for_each(std::execution::par_unseq, cr.begin(), cr.end(), [basePathSat, dst, tileSize](int i) {
+                    auto curWritePath = basePathSat / std::to_string(i);
+                    if (!fs::exists(curWritePath)) {
+                        fs::create_directories(curWritePath);
+                    }
+
+                    for (int32_t j = 0; j < 4; j++) {
+                        ImageBuf out = ImageBufAlgo::cut(dst, ROI(i * tileSize, (i + 1) * tileSize, j * tileSize, (j + 1) * tileSize));
+                        out.write((curWritePath / std::to_string(j).append(".png")).string());
+                    }
                 });
-        }
-
-        auto pbo = rvff::cxx::create_pbo_reader_path(findPboPath(lcoPaths[0]).string());
-
-        for (auto& lcoPath : lcoPaths) {
-            auto data = pbo->get_entry_data(lcoPath);
-
-            if (data.empty()) {
-                pbo = rvff::cxx::create_pbo_reader_path(findPboPath(lcoPath).string());
-                data = pbo->get_entry_data(lcoPath);
             }
-
-            auto lco_mm = rvff::cxx::get_mipmap_from_paa_vec(data, 0);
-
-            std::vector<std::string> splitResult = {};
-            boost::split(splitResult, ((fs::path)lcoPath).filename().string(), boost::is_any_of("_"));
-
-            ImageBuf src(ImageSpec(lco_mm.height, lco_mm.height, 4, TypeDesc::UINT8), lco_mm.data.data());
-
-            uint32_t x = std::stoi(splitResult[1]);
-            uint32_t y = std::stoi(splitResult[2]);
-
-            ImageBufAlgo::paste(dst, (x * lco_mm.height - x * overlap), (y * lco_mm.height - y * overlap), 0, 0, src);
-        }
-
-        // https://github.com/pennyworth12345/A3_MMSI/wiki/Mapframe-Information#stretching-at-edge-tiles
-        maxX += 1;
-
-        auto hasEqualStrechting = (worldSize == (upperMipmap.width * maxX)) || (worldSize == ((upperMipmap.width - overlap) * maxX));
-        int32_t strechedBorderSizeStart = overlap / 2;
-        int32_t strechedBorderSizeEnd = strechedBorderSizeStart;
-
-        if (!hasEqualStrechting) {
-            int32_t tileSizeAfterOverlap = upperMipmap.width - overlap;
-            int32_t temp = (tileSizeAfterOverlap * maxX) - worldSize;
-            temp -= (overlap / 2);
-            int32_t lastTileRealWidth = (tileSizeAfterOverlap - temp) % upperMipmap.width;
-            strechedBorderSizeEnd = upperMipmap.width - lastTileRealWidth;
-        }
-
-        dst = ImageBufAlgo::cut(dst, ROI(strechedBorderSizeStart, dst.spec().width - strechedBorderSizeEnd, strechedBorderSizeStart, dst.spec().height - strechedBorderSizeEnd));
-        size_t tileSize = dst.spec().width / 4;
-
-        auto cr = boost::counting_range(0, 4);
-        std::for_each(std::execution::par_unseq, cr.begin(), cr.end(), [basePathSat, dst, tileSize](int i) {
-            auto curWritePath = basePathSat / std::to_string(i);
-            if (!fs::exists(curWritePath)) {
-                fs::create_directories(curWritePath);
+            catch (const rust::Error& ex) {
+                PLOG_ERROR << fmt::format("Exception in writeSatImages PBO: {}", pboPath);
+                PLOG_ERROR << ex.what();
+                throw;
             }
-
-            for (int32_t j = 0; j < 4; j++) {
-                ImageBuf out = ImageBufAlgo::cut(dst, ROI(i * tileSize, (i + 1) * tileSize, j * tileSize, (j + 1) * tileSize));
-                out.write((curWritePath / std::to_string(j).append(".png")).string());
-            }
-            });
-    }
+        }
 }

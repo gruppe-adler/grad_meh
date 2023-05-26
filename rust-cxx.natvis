@@ -5,11 +5,12 @@
         <StringView>(char*)repr[1],s8</StringView>
     </Type>
     <Type Name="rust::cxxbridge1::Vec&lt;*&gt;">
-        <DisplayString>{{size = {repr[0]}}}</DisplayString>
+        <DisplayString>{{size = {repr[2]}}}</DisplayString>
         <Expand>
-            <Item Name="[size]">repr[0]</Item>
+            <Item Name="[size]">repr[2]</Item>
+            <Item Name="[capacity]">repr[0]</Item>
             <ArrayItems>
-                <Size>repr[0]</Size>
+                <Size>repr[2]</Size>
                 <ValuePointer>($T1*)repr[1]</ValuePointer>
             </ArrayItems>
         </Expand>
