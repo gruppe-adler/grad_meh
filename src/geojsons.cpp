@@ -802,6 +802,37 @@ void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<rvff::
     writeGZJson("railway.geojson.gz", basePathGeojson, railways);
 }
 
+void writeRiver(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson) {
+
+    nl::json rivers;
+
+    for (auto& river : wrp.map_info_river) {
+        OGRMultiPoint mp;
+        for (auto& point : river.polygon) {
+            mp.addGeometry(&OGRPoint(point.x, point.y));
+        }
+        auto hull = mp.ConvexHull();
+        if (hull == nullptr) {
+            PLOG_ERROR << "Convex hull returned nullptr!";
+            continue;
+        }
+
+        nl::json river;
+        river["type"] = "Feature";
+
+        auto ogrJson = hull->exportToJson();
+        river["geometry"] = nl::json::parse(ogrJson);
+        CPLFree(ogrJson);
+        OGRGeometryFactory::destroyGeometry(hull);
+
+        river["properties"] = nl::json::object();
+
+        rivers.push_back(river);
+    }
+
+    writeGZJson("river.geojson.gz", basePathGeojson, rivers);
+}
+
 void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName)
 {
     using namespace rvff::cxx;
@@ -939,5 +970,7 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
     writePowerlines(wrp, basePathGeojson);
 
     writeRunways(basePathGeojson, worldName);
+
+    writeRiver(wrp, basePathGeojson);
 
 }

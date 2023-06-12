@@ -56,3 +56,4 @@ void writeGenericMapTypes(fs::path& basePathGeojson, const std::vector<std::pair
 void writePowerlines(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson);
 void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<rvff::cxx::ObjectCxx, rvff::cxx::LodCxx&>>& objectPairs);
 void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName);
+void writeRiver(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson);

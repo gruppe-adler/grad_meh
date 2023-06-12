@@ -47,10 +47,10 @@ void writeArea(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson, const std::ve
         point.y = objectPair.first.transform_matrx._3.z;
         point.z = 0;
 
-        if (point.x < 0 || std::isnan(point.x) || std::isinf(point.x) ||
-            point.y < 0 || std::isnan(point.y) || std::isinf(point.y)) {
+        if (/*point.x < 0 || */std::isnan(point.x) || std::isinf(point.x) ||
+            /*point.y < 0 || */std::isnan(point.y) || std::isinf(point.y)) {
             PLOG_WARNING << fmt::format("[writeArea {}] Skipping point X: {} Y: {}", name, point.x, point.y);
-            break;
+            continue;
         }
 
         cloudPtr->push_back(point);

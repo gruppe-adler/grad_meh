@@ -36,7 +36,9 @@ float_t compareRows(rust::slice<uint8_t>::iterator mipmap1It, rust::slice<uint8_
 
 uint32_t calcOverLap(rvff::cxx::MipmapCxx& mipmap1, rvff::cxx::MipmapCxx& mipmap2) {
     std::vector<std::pair<float_t, size_t>> bestMatchingOverlaps = {};
-    auto filter = mipmap1.height > 512 ? 6 : 3;
+
+    //auto filter = mipmap1.height > 512 ? 6 : 3;
+    auto filter = 3;
 
     for (uint32_t overlap = 1; overlap < (mipmap1.height / filter); overlap++) {
         std::vector<float_t> equalities = {};
@@ -238,30 +240,59 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
                     std::vector<std::string> splitResult = {};
                     boost::split(splitResult, ((fs::path)lcoPath).filename().string(), boost::is_any_of("_"));
 
-                    ImageBuf src(ImageSpec(lco_mm.height, lco_mm.height, 4, TypeDesc::UINT8), lco_mm.data.data());
+                    ImageBuf src(ImageSpec(lco_mm.width, lco_mm.height, 4, TypeDesc::UINT8), lco_mm.data.data());
+
+                    auto width = lco_mm.width;
+                    auto height = lco_mm.height;
+
+                    if (lco_mm.width == 4 && lco_mm.height == 4) {
+                        src = ImageBufAlgo::resize(src, "", 0, ROI(0, upperMipmap.width, 0, upperMipmap.height));
+                        width = upperMipmap.width;
+                        height = upperMipmap.height;
+                        PLOG_INFO << fmt::format("Old filler method detected, resizing 4x4 tiles to {}x{} !", upperMipmap.width, upperMipmap.height);
+                    }
 
                     uint32_t x = std::stoi(splitResult[1]);
                     uint32_t y = std::stoi(splitResult[2]);
 
-                    ImageBufAlgo::paste(dst, (x * lco_mm.height - x * overlap), (y * lco_mm.height - y * overlap), 0, 0, src);
+                    ImageBufAlgo::paste(dst, (x * width - x * overlap), (y * height - y * overlap), 0, 0, src);
                 }
 
                 // https://github.com/pennyworth12345/A3_MMSI/wiki/Mapframe-Information#stretching-at-edge-tiles
+
+                auto tileWidth = upperMipmap.width / maxX;
+                auto tileHeight = upperMipmap.height / maxY;
+
                 maxX += 1;
+                maxY += 1;
+
+                int32_t initalOffset = overlap / 2; // always half of overlap
 
                 auto hasEqualStrechting = (worldSize == (upperMipmap.width * maxX)) || (worldSize == ((upperMipmap.width - overlap) * maxX));
-                int32_t strechedBorderSizeStart = overlap / 2;
-                int32_t strechedBorderSizeEnd = strechedBorderSizeStart;
 
+                auto finalWidth = ((upperMipmap.width - overlap) * maxX);
+                auto finalHeight = ((upperMipmap.height - overlap) * maxY);
+
+                // "It just works"
                 if (!hasEqualStrechting) {
-                    int32_t tileSizeAfterOverlap = upperMipmap.width - overlap;
-                    int32_t temp = (tileSizeAfterOverlap * maxX) - worldSize;
-                    temp -= (overlap / 2);
-                    int32_t lastTileRealWidth = (tileSizeAfterOverlap - temp) % upperMipmap.width;
-                    strechedBorderSizeEnd = upperMipmap.width - lastTileRealWidth;
+                    if (finalWidth <= worldSize) {
+                        finalWidth -= overlap;
+                    }
+                    else {
+                        finalWidth -= finalWidth % worldSize;;
+                    }
+
+                    if (finalHeight <= worldSize) {
+                        finalHeight -= overlap;
+                    }
+                    else {
+                        finalHeight -= finalHeight % worldSize;
+                    }
                 }
 
-                dst = ImageBufAlgo::cut(dst, ROI(strechedBorderSizeStart, dst.spec().width - strechedBorderSizeEnd, strechedBorderSizeStart, dst.spec().height - strechedBorderSizeEnd));
+                //dst.write((basePathSat / "full_out.png").string());
+                dst = ImageBufAlgo::cut(dst, ROI(initalOffset, initalOffset + finalWidth, initalOffset, initalOffset + finalHeight));
+
                 size_t tileSize = dst.spec().width / 4;
 
                 auto cr = boost::counting_range(0, 4);
