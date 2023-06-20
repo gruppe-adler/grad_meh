@@ -116,6 +116,10 @@ target_link_libraries(${INTERCEPT_PLUGIN_NAME} plog::plog)
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} rust-lib)
 
 if(MSVC)
+	target_link_libraries(${INTERCEPT_PLUGIN_NAME} ntdll.lib)
+endif()
+
+if(MSVC)
     # Note: This is required because we use `cxx` which uses `cc` to compile and link C++ code.
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		corrosion_set_env_vars(rvff-cxx "CFLAGS=-MTd" "CXXFLAGS=-MTd")
@@ -138,8 +142,8 @@ else()
 	set(CMAKE_CXX_FLAGS_RELEASE "/MT /Zi /O2 /Ob1 /EHsc /MP") #with debug info
 	# /FORCE:MULTIPLE requrired to ignore  second definition of tiff stuff in gdal (conflicting with oiio?)
 	target_link_options(${INTERCEPT_PLUGIN_NAME} PUBLIC "/FORCE:MULTIPLE")
-	set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "/DEBUG:FULL") 
-	set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/OPT:REF /DEBUG:FULL") 
+	set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "/DEBUG:FULL /NODEFAULT:LIBCMTD") 
+	set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/OPT:REF /DEBUG:FULL /NODEFAULT:LIBCMTD") 
 endif()
 
 
