@@ -69,7 +69,7 @@ jobs:
         buildWithCMake: true
 
     # Build the mod
-    - uses: gruppe-adler/action-release-with-hemtt@60f7195
+    - uses: gruppe-adler/action-release-with-hemtt@60f7195e5240289fecd07c29cc5ec8fd92ad2159
       name: 'Build Mod with HEMTT'
       id: build
 
