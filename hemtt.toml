@@ -6,9 +6,22 @@ files = [
     "mod.cpp",
     "Adler.paa",
     "LICENSE",
-    "README.md",
-    "*.dll",
-    "*.pdb"
+    "README.md"
 ]
 key_name = "{{prefix}}-{{version}}"
-sig_name = "{{prefix}}-{{version}}"
+authority = "{{version}}"
+
+releasebuild = [
+  "!copyInterceptPlugin"
+]
+
+[scripts.copyInterceptPlugin]
+steps_linux = [
+    "mkdir -p releases/{{version}}/@{{prefix}}/intercept",
+    "cp build/lib64/* releases/{{version}}/@{{prefix}}/intercept"
+]
+steps_windows = [
+    'xcopy build\lib64\* releases\\{{version}}\@{{prefix}}\intercept\ /Y /F'
+]
+
+show_output = true
