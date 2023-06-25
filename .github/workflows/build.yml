@@ -2,14 +2,14 @@ name: C/C++ CI
 
 on:
   push:
-    branches:
-        - 'ci'
   pull_request:
 
 jobs:
   job_build_cpp:
     name: ${{ matrix.os }}-${{ matrix.buildConfig }}
     runs-on: ${{ matrix.os }}
+    outputs:
+      modName: ${{ steps.build.outputs.mod_name }}
     strategy:
       fail-fast: false
       matrix:
@@ -17,14 +17,16 @@ jobs:
         include:
           - os: windows-latest
             buildConfig: release
-            displayName: grad_replay_intercept_windows
+            displayName: windows
             triplet: x64-windows-static
+            preset: ninja-msvc-vcpkg
             configuration: 'x64.*'
             installPath: 'install/bin/'
           - os: ubuntu-latest
             buildConfig: release
-            displayName: grad_replay_intercept_ubuntu
+            displayName: ubuntu
             triplet: x64-linux
+            preset: ninja-linux-vcpkg
             configuration: 'x64.*'
             installPath: 'install/lib/'
 
@@ -53,33 +55,24 @@ jobs:
       uses: lukka/run-vcpkg@v11
       id: runvcpkg
       with:
-        #setupOnly: true
         vcpkgDirectory: '${{ github.workspace }}/vcpkg'
-        vcpkgTriplet: '${{ matrix.triplet }}'
-        vcpkgGitCommitId: '22b3afdab7098e4dffa884de56c3bd9c2b0636e0'
+        vcpkgGitCommitId: '1286cac8751e13bb289061b7e3b89eb4c3f613a2'
 
-    # Build with CMake and Ninja
-    - name: Run CMake+Ninja
-      uses: lukka/run-cmake@v3
-      id: runcmake
+    - name: Run CMake consuming CMakePresets.json and vcpkg.json by mean of vcpkg.
+      uses: lukka/run-cmake@v10
       with:
-        cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
-        cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
-        buildWithCMakeArgs: ' -- install -v'
-        buildDirectory: '${{ runner.workspace }}/b/ninja/'
-        cmakeAppendedArgs: '-G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install'
-        useVcpkgToolchainFile: true
-        buildWithCMake: true
+        configurePreset: ${{ matrix.preset }}
+        buildPreset: ${{ matrix.preset }}-release
 
     # Build the mod
-    - uses: gruppe-adler/action-release-with-hemtt@60f7195e5240289fecd07c29cc5ec8fd92ad2159
+    - uses: gruppe-adler/action-release-with-hemtt@v3
       name: 'Build Mod with HEMTT'
       id: build
 
     # Upload the mod
     - uses: actions/upload-artifact@v1
       with:
-        name: ${{ matrix.displayName }}
+        name: ${{ steps.build.outputs.mod_name }}_${{ matrix.displayName }}
         path: ${{ steps.build.outputs.release_path }}
 
   job_release:
@@ -91,17 +84,17 @@ jobs:
       - name: Download windows build
         uses: actions/download-artifact@v2
         with:
-          name: grad_meh_windows
+          name: ${{needs.job_build_cpp.outputs.modName}}_windows
       - name: Download ubuntu build
         uses: actions/download-artifact@v2
         with:
-          name: grad_meh_ubuntu
+          name: ${{needs.job_build_cpp.outputs.modName}}_ubuntu
 
       # zip it
       - uses: papeloto/action-zip@v1
         with:
-          files: \@grad_meh/
-          dest: \@grad_meh.zip
+          files: \@${{needs.job_build_cpp.outputs.modName}}/
+          dest: \@${{needs.job_build_cpp.outputs.modName}}.zip
 
       # release it
       - uses: "marvinpinto/action-automatic-releases@latest"
@@ -109,5 +102,4 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: true
           files: |
-            \@grad_meh.zip
-
+            \@${{needs.job_build_cpp.outputs.modName}}.zip
