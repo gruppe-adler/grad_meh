@@ -57,6 +57,7 @@ jobs:
       with:
         vcpkgDirectory: '${{ github.workspace }}/vcpkg'
         vcpkgGitCommitId: '1286cac8751e13bb289061b7e3b89eb4c3f613a2'
+        runVcpkgInstall: true
 
     - name: Run CMake consuming CMakePresets.json and vcpkg.json by mean of vcpkg.
       uses: lukka/run-cmake@v10
