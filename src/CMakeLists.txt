@@ -10,11 +10,6 @@ SOURCE_GROUP("src" FILES ${INTERCEPT_PLUGIN_SOURCES})
 #Here is a example of a "utilities" subdirectory.
 
 #----Don't change anything below this line
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    set(DEBUG_SUFFIX "d")
-else()
-    set(DEBUG_SUFFIX "")
-endif()
 
 # fmt
 find_package(fmt CONFIG REQUIRED)
