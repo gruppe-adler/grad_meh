@@ -50,6 +50,10 @@ jobs:
     # Install latest CMake
     - uses: lukka/get-cmake@latest
 
+    - name: Create folder
+      run: |
+        mkdir C:/test/vcpkg
+
     # Setup vcpkg and build deps
     - name: Restore artifacts, or Run vcpkg, build and cache artifacts
       uses: lukka/run-vcpkg@v11
