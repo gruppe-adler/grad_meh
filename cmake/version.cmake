@@ -1,6 +1,25 @@
 # From https://www.mattkeeter.com/blog/2018-01-06-versioning/
 
-execute_process(COMMAND git log --pretty=format:'%h' -n 1
+message("Writing version.cpp")
+
+find_program(GIT "git")
+
+if(GIT)
+    message("Found git at:")
+    message(${GIT})
+else()
+    message("Did not find git!")
+endif()
+
+find_program(BASH "bash")
+if(BASH)
+    message("Found bash at:")
+    message(${BASH})
+else()
+    message("Did not find bash!")
+endif()
+
+execute_process(COMMAND ${GIT} log --pretty=format:'%h' -n 1
                 OUTPUT_VARIABLE GIT_REV
                 ERROR_QUIET)
 
@@ -14,17 +33,17 @@ if ("${GIT_REV}" STREQUAL "")
     set(GIT_BRANCH "N/A")
 else()
     execute_process(
-        COMMAND bash -c "git diff --quiet --exit-code || echo +"
+        COMMAND ${BASH} -c "git diff --quiet --exit-code || echo +"
         OUTPUT_VARIABLE GIT_DIFF)
     execute_process(
-        COMMAND git describe --exact-match --tags
+        COMMAND ${GIT} describe --exact-match --tags
         OUTPUT_VARIABLE GIT_TAG ERROR_QUIET)
     execute_process(
-        COMMAND git rev-parse --abbrev-ref HEAD
+        COMMAND ${GIT} rev-parse --abbrev-ref HEAD
         OUTPUT_VARIABLE GIT_BRANCH)
 
     execute_process(
-        COMMAND git describe --tags --abbrev=0 --match v*
+        COMMAND ${GIT} describe --tags --abbrev=0 --match v*
         OUTPUT_VARIABLE GIT_LAST_VERSION
     )
 
