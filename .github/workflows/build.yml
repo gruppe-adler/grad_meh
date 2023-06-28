@@ -12,8 +12,8 @@ env:
 
 jobs:
   job_build_cpp:
-    name: ${{ matrix.os }}-${{ matrix.buildConfig }}
-    runs-on: ${{ matrix.os }}
+    name: win
+    runs-on: windows-latest
 
     steps:
     # Checkout
