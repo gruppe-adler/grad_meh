@@ -64,9 +64,9 @@ jobs:
 
     # release it
     - uses: "marvinpinto/action-automatic-releases@latest"
+      if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
       with:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         prerelease: true
         files: |
           \@${{needs.job_build_cpp.outputs.modName}}.zip
-        if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
