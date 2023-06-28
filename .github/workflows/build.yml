@@ -4,40 +4,18 @@ on:
   push:
   pull_request:
 
+env:
+  VCPKG_COMMIT: 1286cac8751e13bb289061b7e3b89eb4c3f613a2
+  VCPKG_DIR: C:/deps/vcpkg
+  VCPKG_TRIPLET: x64-windows-static
+  CMAKE_PRESET: ninja-linux-vcpkg
+
 jobs:
   job_build_cpp:
     name: ${{ matrix.os }}-${{ matrix.buildConfig }}
     runs-on: ${{ matrix.os }}
-    outputs:
-      modName: ${{ steps.build.outputs.mod_name }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-latest]
-        include:
-          - os: windows-latest
-            buildConfig: release
-            displayName: windows
-            triplet: x64-windows-static
-            preset: ninja-msvc-vcpkg
-            configuration: 'x64.*'
-            installPath: 'install/bin/'
-          - os: ubuntu-latest
-            buildConfig: release
-            displayName: ubuntu
-            triplet: x64-linux
-            preset: ninja-linux-vcpkg
-            configuration: 'x64.*'
-            installPath: 'install/lib/'
 
     steps:
-    - name: Use gcc-9/g++-9 on ubuntu
-      run: |
-        echo "CC=gcc-9" >> $GITHUB_ENV
-        echo "CXX=g++-9" >> $GITHUB_ENV
-      shell: bash
-      if: matrix.os == 'ubuntu-latest'
-
     # Checkout
     - uses: actions/checkout@v2
       with:
@@ -52,23 +30,21 @@ jobs:
 
     - name: Create folder
       run: |
-        mkdir C:/test/vcpkg
+        mkdir ${{ env.VCPKG_DIR }}
 
     # Setup vcpkg and build deps
     - name: Restore artifacts, or Run vcpkg, build and cache artifacts
       uses: lukka/run-vcpkg@v11
       id: runvcpkg
       with:
-        #vcpkgDirectory: '${{ github.workspace }}/vcpkg'
-        vcpkgGitCommitId: '1286cac8751e13bb289061b7e3b89eb4c3f613a2'
-        binaryCachePath: 'C:/test/vcpkg'
-        vcpkgDirectory: 'C:/test/vcpkg'
+        vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+        vcpkgDirectory: ${{ env.VCPKG_DIR }}
 
     - name: Run CMake consuming CMakePresets.json and vcpkg.json by mean of vcpkg.
       uses: lukka/run-cmake@v10
       with:
-        configurePreset: ${{ matrix.preset }}
-        buildPreset: ${{ matrix.preset }}-release
+        configurePreset: ${{ env.CMAKE_PRESET }}
+        buildPreset: ${{ env.CMAKE_PRESET }}-release
 
     # Build the mod
     - uses: gruppe-adler/action-release-with-hemtt@v3
@@ -78,34 +54,20 @@ jobs:
     # Upload the mod
     - uses: actions/upload-artifact@v1
       with:
-        name: ${{ steps.build.outputs.mod_name }}_${{ matrix.displayName }}
+        name: ${{ steps.build.outputs.mod_name }}
         path: ${{ steps.build.outputs.release_path }}
 
-  job_release:
-    runs-on: windows-latest
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
-    needs: [job_build_cpp]
-    steps:
-      # Download the build mod
-      - name: Download windows build
-        uses: actions/download-artifact@v2
-        with:
-          name: ${{needs.job_build_cpp.outputs.modName}}_windows
-      - name: Download ubuntu build
-        uses: actions/download-artifact@v2
-        with:
-          name: ${{needs.job_build_cpp.outputs.modName}}_ubuntu
+    # zip it
+    - uses: papeloto/action-zip@v1
+      with:
+        files: \@${{ steps.build.outputs.mod_name }}/
+        dest: \@${{ steps.build.outputs.mod_name }}.zip
 
-      # zip it
-      - uses: papeloto/action-zip@v1
-        with:
-          files: \@${{needs.job_build_cpp.outputs.modName}}/
-          dest: \@${{needs.job_build_cpp.outputs.modName}}.zip
-
-      # release it
-      - uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: true
-          files: |
-            \@${{needs.job_build_cpp.outputs.modName}}.zip
+    # release it
+    - uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        prerelease: true
+        files: |
+          \@${{needs.job_build_cpp.outputs.modName}}.zip
+        if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
