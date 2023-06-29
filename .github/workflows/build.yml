@@ -21,6 +21,9 @@ jobs:
         submodules: true
         fetch-depth: 0
 
+    - uses: ./.github/actions/update-versionfile
+      name: 'Update script_version.hpp'
+
     # Setup MSVC
     - uses: ilammy/msvc-dev-cmd@v1
 
