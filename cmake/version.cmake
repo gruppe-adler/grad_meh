@@ -1,5 +1,8 @@
 # From https://www.mattkeeter.com/blog/2018-01-06-versioning/
 
+message("Update script_version.hpp")
+execute_process(COMMAND ${BASH} ./scripts/update-versionfile.sh)
+
 message("Writing version.cpp")
 
 find_program(GIT "git")
@@ -18,6 +21,8 @@ if(BASH)
 else()
     message("Did not find bash!")
 endif()
+
+# Write version.cpp
 
 execute_process(COMMAND ${GIT} log --pretty=format:'%h' -n 1
                 OUTPUT_VARIABLE GIT_REV
@@ -72,4 +77,54 @@ endif()
 
 if (NOT "${VERSION}" STREQUAL "${VERSION_}")
     file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/version.cpp "${VERSION}")
+endif()
+
+# Write script_version.hpp
+if ("${GIT_REV}" STREQUAL "")
+    set(VERSION_MAJOR "0")
+    set(VERSION_MINOR "0")
+    set(VERSION_PATCH "0")
+    set(VERSION_BUILD "0")
+else()
+    execute_process(
+        COMMAND ${GIT} describe --tag --always
+        OUTPUT_VARIABLE GIT_TAG ERROR_QUIET)
+    string(REGEX REPLACE "^v" "" GIT_TAG "${GIT_TAG}")
+    message("Using git tag ${GIT_TAG}")
+
+    string(REPLACE "-" ";" GIT_TAG_LIST ${GIT_TAG})
+    list(LENGTH GIT_TAG_LIST GIT_TAG_LIST_LENGTH)
+
+    list(GET GIT_TAG_LIST 0 VERSION_TAG)
+    if(GIT_TAG_LIST_LENGTH GREATER 1)
+        list(GET GIT_TAG_LIST 1 VERSION_BUILD)
+    else()
+        set(VERSION_BUILD "0")
+    endif()
+    message("Tag: ${VERSION_TAG}")
+    message("Build: ${VERSION_BUILD}")
+    message("")
+    string(REPLACE "." ";" GIT_VERSION_LIST ${VERSION_TAG})
+    list(GET GIT_VERSION_LIST 0 VERSION_MAJOR)
+    list(GET GIT_VERSION_LIST 1 VERSION_MINOR)
+    list(GET GIT_VERSION_LIST 2 VERSION_PATCH)
+endif()
+
+set(VERSION "#define MAJOR ${VERSION_MAJOR}
+#define MINOR ${VERSION_MINOR}
+#define PATCHLVL ${VERSION_PATCH}
+#define BUILD ${VERSION_BUILD}
+")
+
+if(EXISTS ${SCRIPTVERSION_PATH})
+    file(READ ${SCRIPTVERSION_PATH} VERSION_)
+else()
+    set(VERSION_ "")
+endif()
+
+message("lol: " ${VERSION})
+message("lol: " ${SCRIPTVERSION_PATH})
+
+if (NOT "${VERSION}" STREQUAL "${VERSION_}")
+    file(WRITE ${SCRIPTVERSION_PATH} "${VERSION}")
 endif()

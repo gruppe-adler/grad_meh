@@ -73,8 +73,9 @@ SOURCE_GROUP("intercept" FILES ${INTERCEPT_HOST_SOURCES})
 ADD_CUSTOM_COMMAND(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
            ${CMAKE_CURRENT_BINARY_DIR}/_version.cpp
-    COMMAND ${CMAKE_COMMAND} -P
-            ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/version.cmake)
+		   ${CMAKE_CURRENT_BINARY_DIR}/addons/main/script_version.hpp
+           ${CMAKE_CURRENT_BINARY_DIR}/addons/main/_script_version.hpp
+    COMMAND ${CMAKE_COMMAND} -DSCRIPTVERSION_PATH=${CMAKE_CURRENT_SOURCE_DIR}/../addons/main/script_version.hpp -P ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/version.cmake)
 
 include(FetchContent)
 
