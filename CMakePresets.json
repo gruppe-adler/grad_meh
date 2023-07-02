@@ -1,0 +1,94 @@
+{
+  "version": 5,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "ninja-multi-vcpkg",
+      "displayName": "Ninja Multi-Config Configure Settings",
+      "description": "Configure with vcpkg toolchain",
+      "binaryDir": "${sourceDir}/builds/${presetName}",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        },
+        "CMAKE_INSTALL_PREFIX": {
+          "type": "FILEPATH",
+          "value": "${sourceDir}/install"
+        },
+        "USE_64BIT_BUILD": true
+      }
+    },
+    {
+      "name": "ninja-msvc-vcpkg",
+      "displayName": "Ninja MSVC VCPKG",
+      "inherits": "ninja-multi-vcpkg",
+      "description": "Build using Ninja generator with MSVC and VCPKG",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "ninja-linux-vcpkg",
+      "displayName": "Ninja VCPKG on Linux",
+      "inherits": "ninja-multi-vcpkg",
+      "description": "Build using Ninja generator VCPKG on Linux",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ninja-msvc-vcpkg-debug",
+      "configurePreset": "ninja-msvc-vcpkg",
+      "displayName": "Build ninja-msvc-vcpkg (Debug)",
+      "description": "Build ninja-msvc-vcpkg (Debug) Configurations",
+      "targets": "install",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ninja-linux-vcpkg-debug",
+      "configurePreset": "ninja-linux-vcpkg",
+      "displayName": "Build ninja-linux-vcpkg (Debug)",
+      "description": "Build ninja-linux-vcpkg (Debug) Configurations",
+      "targets": "install",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ninja-msvc-vcpkg-release",
+      "configurePreset": "ninja-msvc-vcpkg",
+      "displayName": "Build ninja-msvc-vcpkg (Release)",
+      "description": "Build ninja-msvc-vcpkg Configurations",
+      "targets": "install",
+      "configuration": "Release"
+    },
+    {
+      "name": "ninja-linux-vcpkg-release",
+      "configurePreset": "ninja-linux-vcpkg",
+      "displayName": "Build ninja-linux-vcpkg (Release)",
+      "description": "Build ninja-linux-vcpkg Configurations",
+      "targets": "install",
+      "configuration": "Release"
+    }
+  ]
+}

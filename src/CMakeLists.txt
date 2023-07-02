@@ -10,11 +10,6 @@ SOURCE_GROUP("src" FILES ${INTERCEPT_PLUGIN_SOURCES})
 #Here is a example of a "utilities" subdirectory.
 
 #----Don't change anything below this line
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    set(DEBUG_SUFFIX "d")
-else()
-    set(DEBUG_SUFFIX "")
-endif()
 
 # fmt
 find_package(fmt CONFIG REQUIRED)
@@ -78,8 +73,9 @@ SOURCE_GROUP("intercept" FILES ${INTERCEPT_HOST_SOURCES})
 ADD_CUSTOM_COMMAND(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
            ${CMAKE_CURRENT_BINARY_DIR}/_version.cpp
-    COMMAND ${CMAKE_COMMAND} -P
-            ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/version.cmake)
+		   ${CMAKE_CURRENT_BINARY_DIR}/addons/main/script_version.hpp
+           ${CMAKE_CURRENT_BINARY_DIR}/addons/main/_script_version.hpp
+    COMMAND ${CMAKE_COMMAND} -DSCRIPTVERSION_PATH=${CMAKE_CURRENT_SOURCE_DIR}/../addons/main/script_version.hpp -P ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/version.cmake)
 
 include(FetchContent)
 
@@ -156,3 +152,6 @@ if(NOT "${PLUGIN_FOLDER}" STREQUAL "")
 		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${INTERCEPT_PLUGIN_NAME}> ${PLUGIN_FOLDER}/${INTERCEPT_PLUGIN_NAME}.pdb
 	)
 endif()
+
+install(TARGETS ${INTERCEPT_PLUGIN_NAME} RUNTIME DESTINATION bin)
+
