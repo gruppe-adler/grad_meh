@@ -122,8 +122,8 @@ else()
     set(VERSION_ "")
 endif()
 
-message("lol: " ${VERSION})
-message("lol: " ${SCRIPTVERSION_PATH})
+message("Version: " ${VERSION})
+message("script_version.hpp Path: " ${SCRIPTVERSION_PATH})
 
 if (NOT "${VERSION}" STREQUAL "${VERSION_}")
     file(WRITE ${SCRIPTVERSION_PATH} "${VERSION}")

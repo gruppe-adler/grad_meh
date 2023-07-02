@@ -16,12 +16,8 @@ releasebuild = [
 ]
 
 [scripts.copyInterceptPlugin]
-steps_linux = [
-    "mkdir -p releases/{{version}}/@{{prefix}}/intercept",
-    "cp build/lib64/*.dll releases/{{version}}/@{{prefix}}/intercept"
-]
 steps_windows = [
-    'xcopy build\lib64\*.so releases\\{{version}}\@{{prefix}}\intercept\ /Y /F'
+    'xcopy build\lib64\*.dll releases\\{{version}}\@{{prefix}}\intercept\ /Y /F'
 ]
 
 show_output = true
