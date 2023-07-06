@@ -142,7 +142,14 @@ else()
 	set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/OPT:REF /DEBUG:FULL /NODEFAULT:LIBCMTD") 
 endif()
 
+cmake_host_system_information(RESULT ARMA_PATH QUERY WINDOWS_REGISTRY "HKLM\\SOFTWARE\\WOW6432Node\\Bohemia Interactive\\arma 3" VALUE "main")
+message("Arma Path from Registry: " ${ARMA_PATH})
 
+if("${PLUGIN_FOLDER}" STREQUAL "")
+	SET(PLUGIN_FOLDER "${ARMA_PATH}\\@grad_meh\\intercept")
+endif()
+
+message("grad_meh plugin folder: " ${PLUGIN_FOLDER})
 if(NOT "${PLUGIN_FOLDER}" STREQUAL "")
 	add_custom_command(TARGET ${INTERCEPT_PLUGIN_NAME} POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${INTERCEPT_PLUGIN_NAME}> ${PLUGIN_FOLDER}/${INTERCEPT_PLUGIN_NAME}.dll

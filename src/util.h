@@ -25,6 +25,7 @@
 #include <sstream>
 #include <fstream>
 #include <ostream>
+#include <cstdint>
 #include <nlohmann/json.hpp>
 
 #include <rust-lib/lib.h>
@@ -59,3 +60,5 @@ void writeGZJson(const std::string& fileName, fs::path path, nl::json& json);
 bool isMapPopulating();
 
 void prettyDiagLog(std::string message);
+
+bool checkMagic(rust::Vec<uint8_t>& data, std::string magic);

@@ -869,8 +869,7 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
 
             auto p3dData = pboMap.find(pboPath)->second->get_entry_data(modelPath);
 
-            if (p3dData.empty())
-            {
+            if (p3dData.empty()) {
                 PLOG_WARNING << fmt::format("Couldn't get data for model: {} (PBO: {})", modelPath, pboPath.string());
                 modelMapTypes[i] = {};
                 modelInfos[i] = {};
@@ -878,6 +877,12 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
             }
 
             PLOG_INFO << fmt::format("Reading P3D: {} (PBO: {})", modelPath, pboPath.string());
+
+            if (checkMagic(p3dData, "MLOD")) {
+                PLOG_INFO << fmt::format("Skipping MLOD!");
+                continue;
+            }
+
             auto odol_reader = rvff::cxx::create_odol_lazy_reader_vec(p3dData);
             auto odol2 = odol_reader->get_odol();
 

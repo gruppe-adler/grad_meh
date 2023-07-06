@@ -273,25 +273,34 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
                 auto finalWidth = ((upperMipmap.width - overlap) * maxX);
                 auto finalHeight = ((upperMipmap.height - overlap) * maxY);
 
-                // "It just works"
+                // "iT jUsT w÷rKs"
                 if (!hasEqualStrechting) {
                     if (finalWidth <= worldSize) {
-                        finalWidth -= overlap;
+                        finalWidth -= ((worldSize % finalWidth) % upperMipmap.width) / 2;
+                        finalWidth += overlap / 2;
                     }
                     else {
-                        finalWidth -= finalWidth % worldSize;;
+                        finalWidth -= finalWidth % worldSize;
                     }
 
                     if (finalHeight <= worldSize) {
-                        finalHeight -= overlap;
+                        finalHeight -= ((worldSize % finalHeight) % upperMipmap.height) / 2;
+                        finalHeight += overlap / 2;
                     }
                     else {
                         finalHeight -= finalHeight % worldSize;
                     }
                 }
+                auto cutRoi = ROI(initalOffset, initalOffset + finalWidth, initalOffset, initalOffset + finalHeight);
 
-                //dst.write((basePathSat / "full_out.png").string());
-                dst = ImageBufAlgo::cut(dst, ROI(initalOffset, initalOffset + finalWidth, initalOffset, initalOffset + finalHeight));
+#ifdef _DEBUG 
+                float red[4] = { 1, 0, 0, 1 };
+                auto copy = dst.copy(TypeDesc::FLOAT);
+                ImageBufAlgo::render_box(copy, cutRoi.xbegin, cutRoi.ybegin, cutRoi.xend, cutRoi.yend, red);
+                copy.write((basePathSat / "debug_full_streched.exr").string());
+#endif
+
+                dst = ImageBufAlgo::cut(dst, cutRoi);
 
                 size_t tileSize = dst.spec().width / 4;
 

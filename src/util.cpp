@@ -118,3 +118,16 @@ void prettyDiagLog(std::string message) {
     client::invoker_lock thread_lock;
     sqf::diag_log(sqf::text("[GRAD] (meh): " + message));
 }
+
+bool checkMagic(rust::Vec<uint8_t>& data, std::string magic) {
+    if (data.size() < magic.size()) {
+        return false;
+    }
+
+    for (size_t i = 0; i < magic.size(); i++) {
+        if (data[i] != magic[i]) {
+            return false;
+        }
+    }
+    return true;
+}

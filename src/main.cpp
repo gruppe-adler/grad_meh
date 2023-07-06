@@ -428,7 +428,13 @@ void intercept::pre_start()
 
 #endif
 
-    plog::init(plog::debug, fmt::format("{}/grad_meh_{:%Y-%m-%d_%H-%M-%S}.log", a3_log_path.string(), std::chrono::system_clock::now()).c_str());
+#if _DEBUG
+    auto severity = plog::Severity::debug;
+#else
+    auto severity = plog::Severity::warning;
+#endif
+
+    plog::init(severity, fmt::format("{}/grad_meh_{:%Y-%m-%d_%H-%M-%S}.log", a3_log_path.string(), std::chrono::system_clock::now()).c_str());
 
     PLOG_INFO << "Starting PBO Mapping";
 
