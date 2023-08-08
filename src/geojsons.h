@@ -28,13 +28,7 @@
 #include <KnownFolders.h>
 #include <Shlobj.h>
 #include <codecvt>
-
-// https://devblogs.microsoft.com/oldnewthing/20041025-00/?p=37483
-EXTERN_C IMAGE_DOS_HEADER __ImageBase;
-#define HINST_THISCOMPONENT ((HINSTANCE)&__ImageBase)
-#else
-#error Only Win is supported
-#endif // _WIN32
+#endif
 
 using namespace intercept;
 

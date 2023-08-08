@@ -232,18 +232,8 @@ void writeRoads(
             }
         }
 
-    #ifdef _WIN32
-        char filePath[MAX_PATH + 1];
-        GetModuleFileName(HINST_THISCOMPONENT, filePath, MAX_PATH + 1);
-    #endif
-
-        auto gdalPath = fs::path(filePath);
-        gdalPath = gdalPath.remove_filename();
-
-    #ifdef _WIN32
-        // remove win garbage
-        gdalPath = gdalPath.string().substr(4);
-
+        auto gdalPath = getDllPath();
+#ifdef _WIN32
         // get appdata path
         fs::path gdalLogPath;
         PWSTR localAppdataPath = NULL;
@@ -254,8 +244,7 @@ void writeRoads(
             gdalLogPath = (fs::path)localAppdataPath / "Arma 3" / "grad_meh_gdal.log";
         };
         CoTaskMemFree(localAppdataPath);
-
-    #endif
+#endif
 
         CPLSetConfigOption("GDAL_DATA", gdalPath.string().c_str());
         CPLSetConfigOption("CPL_LOG", gdalLogPath.string().c_str());
@@ -308,7 +297,7 @@ void writeRoads(
 
         fs::remove(basePathGeojsonTemp / "roads.geojson");
         poDstDS = poDriver->Create((basePathGeojsonTemp / "roads.geojson").string().c_str(),
-            poDataset->GetRasterXSize(), poDataset->GetRasterYSize(), poDataset->GetBands().size(), GDT_Byte, papszOptions);
+            poDataset->GetRasterXSize(), poDataset->GetRasterYSize(), static_cast<int32_t>(poDataset->GetBands().size()), GDT_Byte, papszOptions);
 
         char* options[] = { PSTR("-f"), PSTR("GeoJSON"), nullptr };
 
@@ -347,9 +336,6 @@ void writeRoads(
 
                     std::pair<float_t, std::string> roadPair = {};
                     roadWidthMap.insert({ class_name_fixed, std::make_pair(width, map_fixed) });
-
-                    PLOG_DEBUG << static_cast<std::string>(map);
-                    PLOG_DEBUG << width;
                 }
                 catch (const rust::Error& ex) {
                     PLOG_ERROR << ex.what();
@@ -357,7 +343,7 @@ void writeRoads(
             }
         }
         catch (const rust::Error& ex) {
-            PLOG_ERROR << fmt::format("Exception in roadslib.cfg parsing");
+            PLOG_ERROR << fmt::format("Exception in roadslib.cfg parsing! Exception {}", ex.what());
             throw;
         }
         // calc additional roads
@@ -568,7 +554,7 @@ float_t calculateDistance(types::auto_array<types::game_value> start, SimpleVect
         return 0;
     }
 
-    return std::cos(angleInRad) * vec2Magnitude;
+    return static_cast<float_t>(std::cos(angleInRad) * vec2Magnitude);
 }
 
 float_t calculateMaxDistance(types::auto_array<types::game_value> ilsPos, types::auto_array<types::game_value> ilsDirection, 
@@ -609,7 +595,7 @@ nl::json buildRunwayPolygon(sqf::config_entry &runwayConfig) {
     auto dx = endPos[0] - startPos[0];
     auto dy = endPos[1] - startPos[1];
 
-    auto lineLength = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
+    auto lineLength = static_cast<float_t>(std::sqrt(std::pow(dx, 2) + std::pow(dy, 2)));
     dx /= lineLength;
     dy /= lineLength;
 

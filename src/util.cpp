@@ -72,6 +72,7 @@ fs::path findPboPath(std::string path) {
     for (auto const& [key, val] : entryPboMap)
     {
         if (boost::istarts_with(path, key) && key.length() > matchLength) {
+            matchLength = key.length();
             retPath = val;
         }
     }
@@ -131,3 +132,49 @@ bool checkMagic(rust::Vec<uint8_t>& data, std::string magic) {
     }
     return true;
 }
+
+fs::path getDllPath() {
+#ifdef _WIN32
+    char filePath[MAX_PATH + 1];
+    GetModuleFileName(HINST_THISCOMPONENT, filePath, MAX_PATH + 1);
+#endif
+
+    auto dllPath = fs::path(filePath);
+    dllPath = dllPath.remove_filename();
+
+#ifdef _WIN32
+    // Remove win garbage
+    dllPath = dllPath.string().substr(4);
+#endif
+
+    return dllPath;
+}
+
+std::map<std::string, int32_t> overlapMap = {};
+bool mapInit = false;
+
+int32_t getConfigOverlap(std::string worldName) {
+    if (!mapInit) {
+        try {
+            std::ifstream oc(getDllPath() / "rb_overlap_config.json");
+            nl::json data = nl::json::parse(oc);
+            PLOG_INFO << "Reading rb_overlap_config.json";
+            for (auto& el : data.items()) {
+                PLOG_INFO << fmt::format("Key {} - Value {}", el.key(), el.value());
+                overlapMap.insert({ el.key(), el.value() });
+            }
+            mapInit = true;
+        }
+        catch (std::exception& ex) {
+            PLOG_ERROR << fmt::format("Couldn't read rb_overlap_config.json! Exception: {}", ex.what());
+        }
+    }
+
+    auto overlap = overlapMap.find(worldName);
+    if (overlap != overlapMap.end()) {
+        return overlap->second;
+    } else {
+        return -1;
+    }
+}
+
