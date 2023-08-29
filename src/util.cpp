@@ -7,11 +7,11 @@ static bool gradMehMapIsPopulating = false;
     Returns full paths to every *.pbo from mod Paths + A3 Root
 */
 std::vector<fs::path> getFullPboPaths() {
-    std::vector<std::string> pboList;
+    std::vector<std::wstring> pboList;
 
 #ifdef _WIN32
     for (auto& pboW : generate_pbo_list()) {
-        pboList.push_back(std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes(pboW).substr(4));
+        pboList.push_back(pboW.substr(4));
     }
 #else
     pboList = generate_pbo_list();

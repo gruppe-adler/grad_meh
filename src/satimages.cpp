@@ -394,12 +394,12 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
                     cutRoi = ROI(initalOffset, initalOffset + finalWidth, initalOffset, initalOffset + finalHeight);
                 }
 
-                //#ifdef _DEBUG 
+                #ifdef _DEBUG 
                 float red[4] = { 1, 0, 0, 1 };
                 auto copy = dst.copy(TypeDesc::FLOAT);
                 ImageBufAlgo::render_box(copy, cutRoi.xbegin, cutRoi.ybegin, cutRoi.xend, cutRoi.yend, red);
                 copy.write((basePathSat / "debug_full_streched.exr").string());
-                //#endif
+                #endif
 
                 dst = ImageBufAlgo::cut(dst, cutRoi);
 
