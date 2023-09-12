@@ -150,31 +150,3 @@ fs::path getDllPath() {
     return dllPath;
 }
 
-std::map<std::string, int32_t> overlapMap = {};
-bool mapInit = false;
-
-int32_t getConfigOverlap(std::string worldName) {
-    if (!mapInit) {
-        try {
-            std::ifstream oc(getDllPath() / "rb_overlap_config.json");
-            nl::json data = nl::json::parse(oc);
-            PLOG_INFO << "Reading rb_overlap_config.json";
-            for (auto& el : data.items()) {
-                PLOG_INFO << fmt::format("Key {} - Value {}", el.key(), el.value());
-                overlapMap.insert({ el.key(), el.value() });
-            }
-            mapInit = true;
-        }
-        catch (std::exception& ex) {
-            PLOG_ERROR << fmt::format("Couldn't read rb_overlap_config.json! Exception: {}", ex.what());
-        }
-    }
-
-    auto overlap = overlapMap.find(worldName);
-    if (overlap != overlapMap.end()) {
-        return overlap->second;
-    } else {
-        return -1;
-    }
-}
-

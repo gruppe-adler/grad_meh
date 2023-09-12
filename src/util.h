@@ -71,4 +71,3 @@ bool checkMagic(rust::Vec<uint8_t>& data, std::string magic);
 
 fs::path getDllPath();
 
-int32_t getConfigOverlap(std::string worldName);
