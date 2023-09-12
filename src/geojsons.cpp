@@ -256,9 +256,7 @@ void writeRoads(
         GDALAllRegister();
         poDriver = GetGDALDriverManager()->GetDriverByName(pszFormat);
         if (poDriver == NULL) {
-            threadLock.lock();
-            sqf::diag_log("Couldn't get the GeoJSON Driver");
-            threadLock.unlock();
+            PLOG_ERROR << "Couldn't get the GeoJSON Driver";
             return;
         }
         papszMetadata = poDriver->GetMetadata();
@@ -307,9 +305,7 @@ void writeRoads(
         auto dataSet = GDALVectorTranslate((basePathGeojsonTemp / "roads.geojson").string().c_str(), poDstDS, 1, &poDatasetH, gdalOptions, &error);
 
         if (error != 0) {
-            threadLock.lock();
-            sqf::diag_log("GDALVectorTranslate failed!");
-            threadLock.unlock();
+            PLOG_ERROR << "GDALVectorTranslate failed!";
             return;
         }
 
@@ -819,6 +815,32 @@ void writeRiver(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson)
     writeGZJson("river.geojson.gz", basePathGeojson, rivers);
 }
 
+void writeMounts(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson) {
+
+    auto mounts = nl::json();
+    for (auto& mount : wrp.mountains) {
+        auto pointFeature = nl::json();
+        pointFeature["type"] = "Feature";
+
+        auto geometry = nl::json();
+        geometry["type"] = "Point";
+
+        auto posArray = nl::json::array();
+        posArray.push_back((float_t)mount.x);
+        posArray.push_back((float_t)mount.z);
+        geometry["coordinates"] = posArray;
+
+        pointFeature["geometry"] = geometry;
+        pointFeature["properties"] = nl::json::object();
+        pointFeature["properties"]["elevation"] = mount.y;
+
+        mounts.push_back(pointFeature);
+    }
+    if (!mounts.is_null() && mounts.is_array() && !mounts.empty()) {
+        writeGZJson("mounts.geojson.gz", basePathGeojson, mounts);
+    }
+}
+
 void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName)
 {
     using namespace rvff::cxx;
@@ -959,6 +981,7 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
     writeSpecialIcons(wrp, basePathGeojson, 2, "bush");
     writeSpecialIcons(wrp, basePathGeojson, 11, "rock");
     writePowerlines(wrp, basePathGeojson);
+    writeMounts(wrp, basePathGeojson);
 
     writeRunways(basePathGeojson, worldName);
 
