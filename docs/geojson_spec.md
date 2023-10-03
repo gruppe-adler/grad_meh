@@ -81,3 +81,14 @@ Bridges can be split in the same categories as [roads](#11-roads). Like [roads](
 - File: `roads/<ROAD_TYPE>-bridge.geojson.gz`
 - Geometry-Type: [Polygon](https://tools.ietf.org/html/rfc7946#section-3.1.6)
 - Properties: none
+
+## 13. Rivers
+- File: `river.geojson.gz`
+- Geometry-Type: [Polygon](https://tools.ietf.org/html/rfc7946#section-3.1.6)
+- Properties: none
+
+## 14. Mounts
+- File: `mounts.geojson.gz`
+- Geometry-Type: [Point](https://tools.ietf.org/html/rfc7946#section-3.1.2)
+- Properties:
+    - `elevation`: The height of the location
