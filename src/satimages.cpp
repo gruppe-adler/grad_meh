@@ -15,11 +15,13 @@ using namespace OpenImageIO_v2_4;
 struct SatMapTile {
     fs::path path = {};
     TileTransform tt = {};
+    rvff::cxx::MipmapCxx mipmap = {};
 };
 
 struct FillerMapTile {
     fs::path path = {};
     std::set<TileTransform, CmpTileTransform> tt = {};
+    rvff::cxx::MipmapCxx mipmap = {};
 };
 
 static const std::vector<std::string> texture_config_path    { "Stage0", "texture" };
@@ -51,6 +53,8 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
             std::optional<TileTransform> firstPos = std::nullopt;
             std::string prefix = "s_";
 
+            std::optional<rust::box<rvff::cxx::PboReaderCxx>> pbo = std::nullopt;
+
             for (auto& rvmatPath : rvmats) {
                 if (!boost::istarts_with(((fs::path)rvmatPath).filename().string(), lastValidRvMat)) {
                     PLOG_INFO << fmt::format("Getting data for {}", rvmatPath);
@@ -72,12 +76,29 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
                                 firstPos = tt;
                             }
 
-                            struct SatMapTile tile = { textureStr, tt };
+                            if (!pbo.has_value()) {
+                                pbo = rvff::cxx::create_pbo_reader_path(findPboPath(textureStr).string());
+                            }
+
+                            auto data = (*pbo)->get_entry_data(textureStr);
+
+                            if (data.empty()) {
+                                pbo = rvff::cxx::create_pbo_reader_path(findPboPath(textureStr).string());
+                                data = (*pbo)->get_entry_data(textureStr);
+                            }
+
+                            auto mipmap = rvff::cxx::get_mipmap_from_paa_vec(data, 0);
+
+                            struct SatMapTile tile = { textureStr, tt, mipmap };
                             satMapTiles.push_back(tile);
                         }
                         else {
                             if(!fillerTile.has_value()) {
-                                struct FillerMapTile tile = { textureStr, {} };
+                                auto fillerPbo = rvff::cxx::create_pbo_reader_path(findPboPath(textureStr).string());
+                                auto fillerData = fillerPbo->get_entry_data(textureStr);
+                                auto filler_mm = rvff::cxx::get_mipmap_from_paa_vec(fillerData, 0);
+
+                                struct FillerMapTile tile = { textureStr, {}, filler_mm };
                                 fillerTile = tile;
                             }
 
@@ -102,22 +123,29 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
             });
             satMapTiles.erase(last, satMapTiles.end());
 
+            auto tileSize = 0;
+
             // Fix wrong file extensions (cup summer has png extension)
             for (auto& smt : satMapTiles) {
                 fs::path lcoPathAsPath = smt.path;
                 if (!boost::iequals(lcoPathAsPath.extension().string(), ".paa")) {
                     smt.path = lcoPathAsPath.replace_extension(".paa").string();
                 }
+
+                auto mmSize = std::max(smt.mipmap.width, smt.mipmap.height);
+                if (tileSize < mmSize) {
+                    tileSize = mmSize;
+                }
+            }
+
+            if (tileSize == 4 && ba::iequals(worldName, "vr")) {
+                tileSize = 1024;
             }
 
             auto& firstSmt = satMapTiles[0];
 
-            auto pbo = rvff::cxx::create_pbo_reader_path(findPboPath(firstSmt.path.string()).string());
-            auto firstData = pbo->get_entry_data(firstSmt.path.string());
-            auto firstTile = rvff::cxx::get_mipmap_from_paa_vec(firstData, 0);
-
-            auto tileWidth = firstTile.width;
-            auto tileHeight = firstTile.height;
+            auto tileWidth = tileSize;
+            auto tileHeight = tileSize;
 
             TileTransform firstTT = firstSmt.tt;
             if (firstPos.has_value()) {
@@ -126,6 +154,17 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
 
             auto firstWorldPos = firstTT.pos;
             auto firstAside = firstTT.aside;
+
+            auto scaleFactor = firstAside[0] * tileWidth;
+
+            if (scaleFactor != 1) {
+                scaleFactor += 0.5;
+
+                auto newWidth = static_cast<int32_t>(scaleFactor * tileWidth);
+
+                tileWidth = newWidth;
+                tileHeight = newWidth;
+            }
 
             auto firstXPos = static_cast<int32_t>(firstWorldPos[0] * tileWidth);
             auto firstYPos = static_cast<int32_t>(firstWorldPos[1] * tileHeight);
@@ -136,9 +175,7 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
             auto& dstSpec = dst.spec();
 
             if (fillerTile.has_value()) {
-                auto fillerPbo = rvff::cxx::create_pbo_reader_path(findPboPath(fillerTile->path.string()).string());
-                auto fillerData = fillerPbo->get_entry_data(fillerTile->path.string());
-                auto filler_mm = rvff::cxx::get_mipmap_from_paa_vec(fillerData, 0);
+                auto filler_mm = fillerTile->mipmap;
 
                 auto fillerWidth = filler_mm.width;
                 auto fillerHeight = filler_mm.height;
@@ -171,61 +208,80 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
                 }
 
                 //#ifdef _DEBUG
-                auto copy_full = dst.copy(TypeDesc::UINT8);
-                copy_full.write((basePathSat / "debug_sat_map_only_filler.exr").string());
+                /*auto copy_full = dst.copy(TypeDesc::UINT8);
+                copy_full.write((basePathSat / "debug_sat_map_only_filler.exr").string());*/
                 //#endif
             }
 
+            //auto dstOG = dst.copy(dst.spec().format);
+
             int c = 0;
             for (auto& smt : satMapTiles) {
-                auto data = pbo->get_entry_data(smt.path.string());
-
-                if (data.empty()) {
-                    pbo = rvff::cxx::create_pbo_reader_path(findPboPath(smt.path.string()).string());
-                    data = pbo->get_entry_data(smt.path.string());
-                }
-
-                auto mipmap = rvff::cxx::get_mipmap_from_paa_vec(data, 0);
+                auto mipmap = smt.mipmap;
 
                 ImageBuf src(ImageSpec(mipmap.width, mipmap.height, 4, TypeDesc::UINT8), mipmap.data.data());
 
-                auto width = mipmap.width;
-                auto height = mipmap.height;
-
                 if (mipmap.width == 4 && mipmap.height == 4) {
                     src = ImageBufAlgo::resize(src, "", 0, ROI(0, tileWidth, 0, tileHeight));
-                    width = tileWidth;
-                    height = tileHeight;
-                    PLOG_INFO << fmt::format("Old filler method detected, resizing 4x4 tiles to {}x{} !", tileWidth, tileHeight);
+                    PLOG_INFO << fmt::format("4x4 filler method detected, resizing 4x4 tiles to {}x{} !", tileWidth, tileHeight);
                 }
+
+                auto srcWidth = src.spec().width;
+
+                auto asideX = smt.tt.aside[0];
+                auto scaleFactor = asideX * srcWidth;
+
+                if (scaleFactor != 1) {
+                    scaleFactor += 0.5;
+
+                    auto newWidth = static_cast<int32_t>(scaleFactor * srcWidth);
+
+                    src = ImageBufAlgo::resize(src, "", 0, ROI(0, newWidth, 0, newWidth));
+                }
+
+                auto srcSpec = src.spec();
+
+                auto width = srcSpec.width;
+                auto height = srcSpec.height;
 
                 auto pos = smt.tt.pos;
 
                 auto xPos = static_cast<int32_t>(pos[0] * width * -1);
                 auto yPos = static_cast<int32_t>(((pos[1] * height) - dstSpec.width) * -1);
 
+                /*float red[4] = { 1, 0, 0, 1 };
+                ImageBufAlgo::render_box(src, 0, 0, width-1, height-1, red);*/
+
+                /*auto debugText = fmt::format("rvmat: {}\nxPos: {}\nyPos: {}\nwidth: {}\nheight: {}\nscaleFactor: {}\npos[0] {}\npos[1] {}\naside[0] {}", 
+                    smt.path.filename().string(), xPos, yPos, width, height, scaleFactor, pos[0], pos[1], asideX);
+                ImageBufAlgo::render_text(src, 50, 50, debugText, 20, "Arial", red, ImageBufAlgo::TextAlignX::Left);*/
+
                 ImageBufAlgo::paste(dst, xPos, yPos, 0, 0, src);
 
-                auto copy_party = dst.copy(TypeDesc::UINT8);
-                copy_party.write((basePathSat / fmt::format("debug_part_{}.exr", c++)).string());
+                /*auto copy = dstOG.copy(dstOG.spec().format);
+                ImageBufAlgo::paste(copy, xPos, yPos, 0, 0, src);
+                copy.write((basePathSat / fmt::format("debug_part_{}.exr", c++)).string());*/
+
+                /*auto copy_party = dst.copy(TypeDesc::UINT8);
+                copy_party.write((basePathSat / fmt::format("debug_part_{}.exr", c++)).string());*/
             }
 
             //#ifdef _DEBUG
-            auto copy = dst.copy(TypeDesc::UINT8);
-            copy.write((basePathSat / "debug_full_streched.exr").string());
+            /*auto copy = dst.copy(TypeDesc::UINT8);
+            copy.write((basePathSat / "debug_full_streched.exr").string());*/
             //#endif
 
-            int32_t tileSize = dst.spec().width / 4;
+            int32_t finalTileSize = dst.spec().width / 4;
 
             auto cr = boost::counting_range(0, 4);
-            std::for_each(std::execution::par_unseq, cr.begin(), cr.end(), [basePathSat, dst, tileSize](int i) {
+            std::for_each(std::execution::par_unseq, cr.begin(), cr.end(), [basePathSat, dst, finalTileSize](int i) {
                 auto curWritePath = basePathSat / std::to_string(i);
                 if (!fs::exists(curWritePath)) {
                     fs::create_directories(curWritePath);
                 }
 
                 for (int32_t j = 0; j < 4; j++) {
-                    ImageBuf out = ImageBufAlgo::cut(dst, ROI(i * tileSize, (i + 1) * tileSize, j * tileSize, (j + 1) * tileSize));
+                    ImageBuf out = ImageBufAlgo::cut(dst, ROI(i * finalTileSize, (i + 1) * finalTileSize, j * finalTileSize, (j + 1) * finalTileSize));
                     out.write((curWritePath / std::to_string(j).append(".png")).string());
                 }
             });

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-    <Type Name="rust::cxxbridge1::String">
+    <Type Name="rust::String">
         <DisplayString>{ (char*)repr[1],s8 }</DisplayString>
         <StringView>(char*)repr[1],s8</StringView>
     </Type>
-    <Type Name="rust::cxxbridge1::Vec&lt;*&gt;">
+    <Type Name="rust::Vec&lt;*&gt;">
         <DisplayString>{{size = {repr[2]}}}</DisplayString>
         <Expand>
             <Item Name="[size]">repr[2]</Item>

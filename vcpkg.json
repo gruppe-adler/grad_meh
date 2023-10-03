@@ -5,7 +5,13 @@
 		"nlohmann-json",
 		"boost-filesystem",
 		"boost-iostreams",
-		"openimageio",
+		{
+			"name": "openimageio",
+			"default-features": true,
+			"features": [
+				"freetype"
+			]
+		},
 		"plog",
 		{
 			"name": "gdal",
