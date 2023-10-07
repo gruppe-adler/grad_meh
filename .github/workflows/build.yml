@@ -5,7 +5,7 @@ on:
   pull_request:
 
 env:
-  VCPKG_COMMIT: 1286cac8751e13bb289061b7e3b89eb4c3f613a2
+  VCPKG_COMMIT: cc97b4536ae749ec0e4f643488b600b217540fb3
   VCPKG_DIR: C:/deps/vcpkg
   CMAKE_PRESET: ninja-msvc-vcpkg
 
