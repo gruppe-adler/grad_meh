@@ -23,6 +23,9 @@ jobs:
 
     # Setup MSVC
     - uses: ilammy/msvc-dev-cmd@v1
+      with:
+        vsversion: '2022'
+        toolset: '14.XX'
 
     # Install latest CMake
     - uses: lukka/get-cmake@latest
