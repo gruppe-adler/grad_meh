@@ -392,7 +392,6 @@ void writeRoads(
                     rvff::cxx::XYZTripletCxx pe = {};
                     std::optional<rvff::cxx::XYZTripletCxx> map3Triplet = {};
                     for (auto& namedSelection : road.second.named_selection) {
-                        PLOG_DEBUG << fmt::format("NamedName: {}", static_cast<std::string>(namedSelection.name));
                         if (static_cast<std::string>(namedSelection.name) == "lb") {
                             lb = road.second.vertices[namedSelection.selected_vertices.edges[0]];
                         }
@@ -448,7 +447,7 @@ void writeRoads(
             
             // empty property happens when dbase file is invalid/compressed
             auto propId = feature["properties"]["ID"];
-            if (!propId.is_number_integer()) {
+            if (!propId.is_number_integer() && !propId.is_number_float()) {
                 PLOG_WARNING << "Skipping feature with 'null' ID";
                 break;
             }
