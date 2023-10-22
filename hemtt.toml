@@ -17,8 +17,7 @@ releasebuild = [
 
 [scripts.copyInterceptPlugin]
 steps_windows = [
-    'xcopy build\lib64\*.dll releases\\{{version}}\@{{prefix}}\intercept\ /Y /F',
-    'xcopy rb_overlap_config.json releases\\{{version}}\@{{prefix}}\intercept\ /Y /F'
+    'xcopy build\lib64\*.dll releases\\{{version}}\@{{prefix}}\intercept\ /Y /F'
 ]
 
 show_output = true
