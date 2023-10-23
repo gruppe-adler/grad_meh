@@ -32,21 +32,27 @@
 
 #include <nlohmann/json.hpp>
 
-
+#include <cmath>
 
 namespace nl = nlohmann;
 
-
-void writeArea(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::vector<std::pair<Object, ODOLv4xLod&>>& objectPairs,
+void writeArea(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson, const std::vector<std::pair<rvff::cxx::ObjectCxx, rvff::cxx::LodCxx&>>& objectPairs,
     uint32_t epsilon, uint32_t minClusterSize, uint32_t buffer, uint32_t simplify, const std::string& name) {
 
     size_t nPoints = 0;
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloudPtr(new pcl::PointCloud<pcl::PointXYZ>());
     for (auto& objectPair : objectPairs) {
         pcl::PointXYZ point;
-        point.x = objectPair.first.transformMatrix[3][0];
-        point.y = objectPair.first.transformMatrix[3][2];
+        point.x = objectPair.first.transform_matrx._3.x;
+        point.y = objectPair.first.transform_matrx._3.z;
         point.z = 0;
+
+        if (/*point.x < 0 || */std::isnan(point.x) || std::isinf(point.x) ||
+            /*point.y < 0 || */std::isnan(point.y) || std::isinf(point.y)) {
+            PLOG_WARNING << fmt::format("[writeArea {}] Skipping point X: {} Y: {}", name, point.x, point.y);
+            continue;
+        }
+
         cloudPtr->push_back(point);
         nPoints++;
     }
@@ -129,7 +135,6 @@ void writeArea(grad_aff::Wrp& wrp, fs::path& basePathGeojson, const std::vector<
         return;
     }
 
-    //auto multiPolygonPtr = multiPolygon.Simplify(simplify);
     auto unionPtr = multiPolygonPtr->UnionCascaded();
     if (unionPtr != nullptr) {
         multiPolygonPtr = unionPtr;

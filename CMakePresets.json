@@ -1,0 +1,65 @@
+{
+  "version": 5,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "ninja-debug-vcpkg-win",
+      "displayName": "Ninja/Windows/Debug/VCPKG Config",
+      "description": "Ninja/Windows/Debug/VCPKG Config",
+      "binaryDir": "${sourceDir}/builds/${presetName}",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        },
+        "CMAKE_INSTALL_PREFIX": {
+          "type": "FILEPATH",
+          "value": "${sourceDir}/install"
+        },
+        "USE_64BIT_BUILD": true,
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "ninja-release-vcpkg-win",
+      "displayName": "Ninja/Windows/Release/VCPKG Config",
+      "inherits": "ninja-debug-vcpkg-win",
+      "description": "Ninja/Windows/Release/VCPKG Config",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ninja-msvc-vcpkg-debug",
+      "configurePreset": "ninja-debug-vcpkg-win",
+      "displayName": "Build ninja-msvc-vcpkg (Debug)",
+      "description": "Build ninja-msvc-vcpkg (Debug) Configurations",
+      "targets": "install",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ninja-msvc-vcpkg-release",
+      "configurePreset": "ninja-release-vcpkg-win",
+      "displayName": "Build ninja-msvc-vcpkg (Release)",
+      "description": "Build ninja-msvc-vcpkg Configurations",
+      "targets": "install",
+      "configuration": "Release"
+    }
+  ]
+}

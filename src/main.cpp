@@ -6,6 +6,8 @@
 
 #include "version.h"
 
+#include <OpenImageIO/imageio.h>
+
 // String
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -16,6 +18,8 @@
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 
+// #include <rust-lib/foo/>
+#include <rust-lib/lib.h>
 
 #include <sstream>
 #include <algorithm>
@@ -31,11 +35,14 @@
 
 #include <ogr_geometry.h>
 
-#include <grad_aff/wrp/wrp.h>
-#include <grad_aff/paa/paa.h>
-#include <grad_aff/pbo/pbo.h>
-#include <grad_aff/rap/rap.h>
-#include <grad_aff/p3d/odol.h>
+#include <fmt/format.h>
+#include <fmt/chrono.h>
+#include <fmt/format.h>
+
+#include <plog/Log.h>
+#include <plog/Initializers/RollingFileInitializer.h>
+#include <plog/Formatters/TxtFormatter.h>
+#include <plog/Appenders/ColorConsoleAppender.h>
 
 #include "findPbos.h"
 #include "SimplePoint.h"
@@ -43,6 +50,7 @@
 #include "../addons/main/status_codes.hpp"
 
 using namespace intercept;
+using namespace OIIO;
 
 namespace fs = std::filesystem;
 namespace nl = nlohmann;
@@ -54,11 +62,11 @@ using SQFPar = game_value_parameter;
 
 static bool gradMehIsRunning = false;
 
-int intercept::api_version() { //This is required for the plugin to work.
+int intercept::api_version() { // This is required for the plugin to work.
     return INTERCEPT_SDK_API_VERSION;
 }
 
-void writeMeta(const std::string& worldName, const int32_t& worldSize, fs::path& basePath)
+void writeMeta(const std::string &worldName, const int32_t &worldSize, fs::path &basePath)
 {
     client::invoker_lock threadLock;
     auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
@@ -75,13 +83,15 @@ void writeMeta(const std::string& worldName, const int32_t& worldSize, fs::path&
     meta["gridOffsetY"] = sqf::get_number(mapConfig >> "Grid" >> "offsetY");
 
     auto colorArray = sqf::get_array(mapConfig >> "OutsideTerrain" >> "colorOutside").to_array();
-    if (!colorArray.empty()) {
+    if (!colorArray.empty())
+    {
         meta["colorOutside"] = std::vector<float_t>(colorArray.begin(), colorArray.end());
     }
 
     auto gridArray = nl::json::array();
 
-    for (auto& grid : sqf::config_classes("true", (mapConfig >> "Grid"))) {
+    for (auto &grid : sqf::config_classes("true", (mapConfig >> "Grid")))
+    {
         auto entry = sqf::config_entry(grid);
 
         nl::json entryGrid;
@@ -103,22 +113,24 @@ void writeMeta(const std::string& worldName, const int32_t& worldSize, fs::path&
     out.close();
 }
 
-void writeDem(fs::path& basePath, grad_aff::Wrp& wrp, const int32_t& worldSize)
+void writeDem(fs::path &basePath, rvff::cxx::OprwCxx &wrp, const int32_t &worldSize)
 {
-    auto cellsize = (float_t)worldSize / wrp.mapSizeX;
+    auto cellsize = (float_t)worldSize / wrp.map_size_x;
 
     std::stringstream demStringStream;
-    demStringStream << "ncols " << wrp.mapSizeX << std::endl;
-    demStringStream << "nrows " << wrp.mapSizeY << std::endl;
+    demStringStream << "ncols " << wrp.map_size_x << std::endl;
+    demStringStream << "nrows " << wrp.map_size_y << std::endl;
     demStringStream << "xllcorner " << 0.0 << std::endl;
     demStringStream << "yllcorner " << -cellsize << std::endl;
     demStringStream << "cellsize " << cellsize << std::endl; // worldSize / mapsizex
     demStringStream << "NODATA_value " << -9999;
     demStringStream << std::endl;
 
-    for (int64_t y = wrp.mapSizeY - 1; y >= 0; y--) {
-        for (size_t x = 0; x < wrp.mapSizeX; x++) {
-            demStringStream << wrp.elevation[x + wrp.mapSizeX * y] << " ";
+    for (int64_t y = wrp.map_size_y - 1; y >= 0; y--)
+    {
+        for (size_t x = 0; x < wrp.map_size_x; x++)
+        {
+            demStringStream << wrp.elevation[x + wrp.map_size_x * y] << " ";
         }
         demStringStream << std::endl;
     }
@@ -132,7 +144,7 @@ void writeDem(fs::path& basePath, grad_aff::Wrp& wrp, const int32_t& worldSize)
     demOut.close();
 }
 
-void writePreviewImage(const std::string& worldName, std::filesystem::path& basePath)
+void writePreviewImage(const std::string &worldName, std::filesystem::path &basePath)
 {
     client::invoker_lock threadLock;
     auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
@@ -148,20 +160,33 @@ void writePreviewImage(const std::string& worldName, std::filesystem::path& base
     }
 
     auto pboPath = findPboPath(picturePath);
-
     if (pboPath.empty()) {
         return;
     }
+    try {
+        auto previewPbo = rvff::cxx::create_pbo_reader_path(pboPath.string());
+        auto previewData = previewPbo->get_entry_data(picturePath);
+        auto previewMipmap = rvff::cxx::get_mipmap_from_paa_vec(previewData, 0);
 
-    grad_aff::Pbo prewviewPbo(pboPath.string());
+        auto previewFileName = (basePath / "preview.png").string();
 
-    auto paa = grad_aff::Paa();
-    paa.readPaa(prewviewPbo.getEntryData(picturePath));
-    paa.writeImage((basePath / "preview.png").string());
+        std::unique_ptr<ImageOutput> out = ImageOutput::create(previewFileName);
+        if (!out)
+            return;
+        ImageSpec spec(previewMipmap.width, previewMipmap.height, 4, TypeDesc::UINT8);
+        out->open(previewFileName, spec);
+        out->write_image(TypeDesc::UINT8, previewMipmap.data.data());
+        out->close();
+    }
+    catch (const rust::Error& ex) {
+        PLOG_ERROR << fmt::format("Exception in writePreviewImage PBO: {} Picture Path: {}", pboPath.string(), picturePath);
+        PLOG_ERROR << ex.what();
+        throw;
+    }
 }
 
-
-void extractMap(const std::string& worldName, const std::string& worldPath, std::array<bool, 5>& steps) {
+void extractMap(const std::string &worldName, const std::string &worldPath, std::array<bool, 5> &steps)
+{
 
     auto lowerWorldName = boost::algorithm::to_lower_copy(worldName);
 
@@ -173,10 +198,11 @@ void extractMap(const std::string& worldName, const std::string& worldPath, std:
     startMsg << "Starting export of " << worldName << " [";
     startMsg << std::boolalpha;
 
-    for(auto i = 0; i < steps.size(); i++)
+    for (auto i = 0; i < steps.size(); i++)
     {
         startMsg << steps[i];
-        if (i < (steps.size() - 1)) {
+        if (i < (steps.size() - 1))
+        {
             startMsg << ", ";
         }
     }
@@ -184,82 +210,96 @@ void extractMap(const std::string& worldName, const std::string& worldPath, std:
 
     prettyDiagLog(startMsg.str());
 
-    if (!fs::exists(basePath)) {
+    if (!fs::exists(basePath))
+    {
         fs::create_directories(basePath);
     }
-    if (!fs::exists(basePathGeojson)) {
+    if (!fs::exists(basePathGeojson))
+    {
         fs::create_directories(basePathGeojson);
     }
-    if (!fs::exists(basePathSat)) {
+    if (!fs::exists(basePathSat))
+    {
         fs::create_directories(basePathSat);
     }
 
     std::string curWorldPath = "";
-
-    // Find Wrp Path
-    auto wrpPath = findPboPath(worldPath);
-    grad_aff::Pbo wrpPbo(wrpPath.string());
-
-    auto wrp = grad_aff::Wrp(wrpPbo.getEntryData(worldPath));
-    wrp.wrpName = worldName + ".wrp";
     try {
-        if (steps[0] || steps[1] || steps[3] || steps[4]) {
+        // Find Wrp Path
+        auto wrpPath = findPboPath(worldPath);
+        curWorldPath = wrpPath.string();
+        auto wrpPboReader = rvff::cxx::create_pbo_reader_path(wrpPath.string());
+
+        auto wrp_data = wrpPboReader->get_entry_data(worldPath);
+
+        auto wrp = rvff::cxx::OprwCxx{};
+        // wrp.wrpName = worldName + ".wrp";
+
+        if (steps[0] || steps[1] || steps[3] || steps[4])
+        {
             reportStatus(worldName, "read_wrp", "running");
-            wrp.readWrp();
+            wrp = rvff::cxx::create_wrp_from_vec(wrp_data);
             reportStatus(worldName, "read_wrp", "done");
         }
-        else {
+        else
+        {
             reportStatus(worldName, "read_wrp", "canceled");
         }
-    }
-    catch (std::exception & ex) { // most likely caused by unknown mapinfo type
-        client::invoker_lock threadLock;
-        prettyDiagLog(std::string("exception while reading the wrp: ").append(ex.what()));
-        sqf::hint(ex.what());
-        return;
-    }
 
-    auto worldSize = (uint32_t)wrp.layerCellSize * wrp.layerSizeX;
+        auto worldSize = (uint32_t)wrp.layer_cell_size * wrp.layer_size_x;
 
-    if (steps[0]) {
-        reportStatus(worldName, "write_sat", "running");
-        prettyDiagLog("Exporting sat images");
-        writeSatImages(wrp, worldSize, basePathSat, worldName);
-        reportStatus(worldName, "write_sat", "done");
+        if (steps[0])
+        {
+            reportStatus(worldName, "write_sat", "running");
+            prettyDiagLog("Exporting sat images");
+            writeSatImages(wrp, worldSize, basePathSat, worldName);
+            reportStatus(worldName, "write_sat", "done");
+        }
+        if (steps[1])
+        {
+            reportStatus(worldName, "write_houses", "running");
+            prettyDiagLog("Exporting geojson");
+            writeGeojsons(wrp, basePathGeojson, worldName);
+            reportStatus(worldName, "write_houses", "done");
+        }
+
+        if (steps[2])
+        {
+            reportStatus(worldName, "write_preview", "running");
+            prettyDiagLog("Exporting preview image");
+            writePreviewImage(worldName, basePath);
+            reportStatus(worldName, "write_preview", "done");
+        }
+
+        if (steps[3])
+        {
+            reportStatus(worldName, "write_meta", "running");
+            prettyDiagLog("Exporting meta json");
+            writeMeta(worldName, worldSize, basePath);
+            reportStatus(worldName, "write_meta", "done");
+        }
+
+        if (steps[4])
+        {
+            reportStatus(worldName, "write_dem", "running");
+            prettyDiagLog("Exporting dem file");
+            writeDem(basePath, wrp, worldSize);
+            reportStatus(worldName, "write_dem", "done");
+        }
     }
-    if (steps[1]) {
-        reportStatus(worldName, "write_houses", "running");
-        prettyDiagLog("Exporting geojson");
-        writeGeojsons(wrp, basePathGeojson, worldName);
-        reportStatus(worldName, "write_houses", "done");
-    }
-    
-    if (steps[2]) {
-        reportStatus(worldName, "write_preview", "running");
-        prettyDiagLog("Exporting preview image");
-        writePreviewImage(worldName, basePath);
-        reportStatus(worldName, "write_preview", "done");
-    }
-    
-    if (steps[3]) {
-        reportStatus(worldName, "write_meta", "running");
-        prettyDiagLog("Exporting meta json");
-        writeMeta(worldName, worldSize, basePath);
-        reportStatus(worldName, "write_meta", "done");
-    }
-    
-    if (steps[4]) {
-        reportStatus(worldName, "write_dem", "running");
-        prettyDiagLog("Exporting dem file");
-        writeDem(basePath, wrp, worldSize);
-        reportStatus(worldName, "write_dem", "done");
+    catch (const rust::Error& ex) {
+        PLOG_ERROR << "Exception in extract map command";
+        PLOG_ERROR << fmt::format("WRP Path: {}", curWorldPath);
+        PLOG_ERROR << ex.what();
+        throw;
     }
 
     gradMehIsRunning = false;
     return;
 }
 
-game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
+game_value exportMapCommand(game_state &gs, SQFPar rightArg)
+{
 
     if (gradMehIsRunning)
         return GRAD_MEH_STATUS_ERR_ALREADY_RUNNING;
@@ -272,106 +312,155 @@ game_value exportMapCommand(game_state& gs, SQFPar rightArg) {
     // [sat image, houses, preview img, meta.json, dem.asc]
     std::array<bool, 5> steps = { true, true, true, true, true };
 
-    if (rightArg.type_enum() == game_data_type::STRING) {
+    if (rightArg.type_enum() == game_data_type::STRING)
+    {
         worldName = r_string(rightArg).c_str();
     }
-    else if (rightArg.type_enum() == game_data_type::ARRAY) {
+    else if (rightArg.type_enum() == game_data_type::ARRAY)
+    {
         auto parArray = rightArg.to_array();
-        
-        if (parArray.size() <= 0 || parArray.size() >= 7) {
+
+        if (parArray.size() <= 0 || parArray.size() >= 7)
+        {
             gs.set_script_error(iet::assertion_failed, "Wrong amount of arguments!"sv);
             return GRAD_MEH_STATUS_ERR_ARGS;
         }
 
-        if (parArray[0].type_enum() == game_data_type::STRING) {
+        if (parArray[0].type_enum() == game_data_type::STRING)
+        {
 
             worldName = r_string(parArray[0]);
 
-            for (int i = 1; i < parArray.size(); i++) {
-                if (parArray[i].type_enum() == game_data_type::BOOL) {
+            for (int i = 1; i < parArray.size(); i++)
+            {
+                if (parArray[i].type_enum() == game_data_type::BOOL)
+                {
                     auto b = (bool)parArray[i];
                     steps[i - 1] = b;
                 }
-                else {
+                else
+                {
                     gs.set_script_error(iet::assertion_failed, types::r_string("Expected bool at index ").append(std::to_string(i)).append("!"));
                     return GRAD_MEH_STATUS_ERR_ARGS;
                 }
             }
         }
-        else {
+        else
+        {
             gs.set_script_error(iet::assertion_failed, "First element in the parameter array has to be a string!"sv);
             return GRAD_MEH_STATUS_ERR_ARGS;
         }
-
     }
-    else {
+    else
+    {
         gs.set_script_error(iet::assertion_failed, "Expected a string or an array!"sv);
         return GRAD_MEH_STATUS_ERR_ARGS;
     }
 
     auto configWorld = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
-    if (!boost::iequals(sqf::config_name(configWorld),  worldName)) {
+    if (!boost::iequals(sqf::config_name(configWorld), worldName))
+    {
         gs.set_script_error(iet::assertion_failed, "Couldn't find the specified world!"sv);
         return GRAD_MEH_STATUS_ERR_NOT_FOUND;
     }
 
     // check for leading /
     std::string worldPath = sqf::get_text(configWorld >> "worldName");
-    if (boost::starts_with(worldPath, "\\")) {
+    if (boost::starts_with(worldPath, "\\"))
+    {
         worldPath = worldPath.substr(1);
     }
 
     // try to find pbo
     auto wrpPboPath = findPboPath(worldPath);
-    if (wrpPboPath == "") {
+    if (wrpPboPath == "")
+    {
         return GRAD_MEH_STATUS_ERR_PBO_NOT_FOUND;
     }
-    else {
-        try {
-            grad_aff::Pbo wrpPbo(wrpPboPath.string());
-            if (!wrpPbo.hasEntry(worldPath))
+    else
+    {
+        try
+        {
+            auto wrpPboReader = rvff::cxx::create_pbo_reader_path(wrpPboPath.string());
+            if (!wrpPboReader->has_entry(worldPath))
                 return GRAD_MEH_STATUS_ERR_PBO_NOT_FOUND;
-        } catch (std::exception& ex) {
+        }
+        catch (std::exception &ex)
+        {
             prettyDiagLog(std::string("Exception when opening PBO: ").append(ex.what()));
             return GRAD_MEH_STATUS_ERR_PBO_NOT_FOUND;
         }
     }
 
-    if (!gradMehIsRunning) {
+    if (!gradMehIsRunning)
+    {
         gradMehIsRunning = true;
         std::thread readWrpThread(extractMap, worldName, worldPath, steps);
         readWrpThread.detach();
         return GRAD_MEH_STATUS_OK;
     }
-    else {
+    else
+    {
         prettyDiagLog("gradMeh is already running! Aborting!");
         return GRAD_MEH_STATUS_ERR_ALREADY_RUNNING;
     }
 }
 
-void intercept::pre_start() {
+void intercept::pre_start()
+{
     static auto grad_meh_export_map_string =
         client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::SCALAR, game_data_type::STRING);
     static auto grad_meh_export_map_array =
         client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::SCALAR, game_data_type::ARRAY);
 
+#if WIN32
+    std::filesystem::path a3_log_path;
+    PWSTR path_tmp;
+
+    auto get_folder_path_ret = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &path_tmp);
+
+    if (get_folder_path_ret == S_OK) {
+        a3_log_path = path_tmp;
+    }
+    CoTaskMemFree(path_tmp);
+
+    a3_log_path = a3_log_path / "Arma 3";
+
+#endif
+
+#if _DEBUG
+    auto severity = plog::Severity::debug;
+#else
+    auto severity = plog::Severity::warning;
+#endif
+
+    plog::init(severity, fmt::format("{}/grad_meh_{:%Y-%m-%d_%H-%M-%S}.log", a3_log_path.string(), std::chrono::system_clock::now()).c_str());
+
+    PLOG_INFO << "Starting PBO Mapping";
+
     std::thread mapPopulateThread(populateMap);
     mapPopulateThread.detach();
 }
 
-void intercept::pre_init() {
+void intercept::pre_init()
+{
     std::stringstream preInitMsg;
 
     preInitMsg << "The grad_meh plugin is running! (";
 
-    if (GRAD_MEH_GIT_TAG.empty()) {
+    if (GRAD_MEH_GIT_TAG.empty())
+    {
         preInitMsg << GRAD_MEH_GIT_REV;
     }
-    else {
+    else
+    {
         preInitMsg << GRAD_MEH_GIT_TAG;
     }
 
     preInitMsg << "@" << GRAD_MEH_GIT_BRANCH << ")";
     intercept::sqf::system_chat(preInitMsg.str());
     prettyDiagLog(preInitMsg.str());
+
+    PLOG_INFO << preInitMsg.str();
+
 }

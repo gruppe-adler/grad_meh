@@ -1,0 +1,75 @@
+name: C/C++ CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  VCPKG_COMMIT: cc97b4536ae749ec0e4f643488b600b217540fb3
+  VCPKG_DIR: C:/deps/vcpkg
+  CMAKE_PRESET: ninja-msvc-vcpkg
+
+jobs:
+  job_build_cpp:
+    name: win
+    runs-on: windows-latest
+
+    steps:
+    # Checkout
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    # Setup MSVC
+    - uses: ilammy/msvc-dev-cmd@v1
+      with:
+        vsversion: 2022
+        toolset: 14
+
+    # Install latest CMake
+    - uses: lukka/get-cmake@latest
+
+    - name: Create folder
+      run: |
+        mkdir ${{ env.VCPKG_DIR }}
+
+    # Setup vcpkg and build deps
+    - name: Restore artifacts, or Run vcpkg, build and cache artifacts
+      uses: lukka/run-vcpkg@v11
+      id: runvcpkg
+      with:
+        vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+        vcpkgDirectory: ${{ env.VCPKG_DIR }}
+
+    - name: Run CMake consuming CMakePresets.json and vcpkg.json by mean of vcpkg.
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: ninja-release-vcpkg-win
+        buildPreset: ninja-msvc-vcpkg-release
+
+    # Build the mod
+    - uses: gruppe-adler/action-release-with-hemtt@v3
+      name: 'Build Mod with HEMTT'
+      id: build
+
+    # Upload the mod
+    - uses: actions/upload-artifact@v1
+      with:
+        name: ${{ steps.build.outputs.mod_name }}
+        path: ${{ steps.build.outputs.release_path }}
+
+    # zip it
+    - uses: papeloto/action-zip@v1
+      with:
+        files: \@${{ steps.build.outputs.mod_name }}/
+        dest: \@${{ steps.build.outputs.mod_name }}.zip
+
+    # release it
+    - uses: "marvinpinto/action-automatic-releases@latest"
+      if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        prerelease: true
+        files: |
+          \@${{needs.job_build_cpp.outputs.modName}}.zip

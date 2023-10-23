@@ -1,0 +1,27 @@
+{
+	"name": "grad-meh",
+	"version-string": "0.7.1",
+	"dependencies": [
+		"nlohmann-json",
+		"boost-filesystem",
+		"boost-iostreams",
+		{
+			"name": "openimageio",
+			"default-features": true,
+			"features": [
+				"freetype"
+			]
+		},
+		"plog",
+		{
+			"name": "gdal",
+			"default-features": false,
+			"features": [
+				"geos"
+			]
+		},
+		"pcl",
+		"polyclipping",
+		"fmt"
+	]
+}

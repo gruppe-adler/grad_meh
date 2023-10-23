@@ -1,3 +1,6 @@
 [submodule "intercept"]
 	path = intercept
-	url = git@github.com:intercept/intercept.git
+	url = https://github.com/intercept/intercept.git
+[submodule "src/rvff-cxx"]
+	path = src/rvff-cxx
+	url = https://github.com/arma-tools/rvff-cxx.git

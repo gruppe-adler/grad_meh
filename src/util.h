@@ -4,6 +4,12 @@
 
 #include "findPbos.h"
 
+#include <rust/cxx.h>
+
+#include <fmt/format.h>
+
+#include <plog/Log.h>
+
 // String
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -16,15 +22,25 @@
 
 #include <vector>
 #include <filesystem>
+#include <sstream>
+#include <fstream>
+#include <ostream>
+#include <cstdint>
 #include <nlohmann/json.hpp>
 
-#include <grad_aff/pbo/pbo.h>
+#include <rust-lib/lib.h>
 
 #ifdef _WIN32
     #define NOMINMAX
     #include <Windows.h>
     #include <codecvt>
-#endif
+
+    // https://devblogs.microsoft.com/oldnewthing/20041025-00/?p=37483
+    EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+    #define HINST_THISCOMPONENT ((HINSTANCE)&__ImageBase)
+#else
+#error Only Win is supported
+#endif // _WIN32
 
 #define GRAD_MEH_FORMAT_VERSION 0.1
 #define GRAD_MEH_MAX_COLOR_DIF 441.6729559300637f
@@ -50,3 +66,8 @@ void writeGZJson(const std::string& fileName, fs::path path, nl::json& json);
 bool isMapPopulating();
 
 void prettyDiagLog(std::string message);
+
+bool checkMagic(rust::Vec<uint8_t>& data, std::string magic);
+
+fs::path getDllPath();
+

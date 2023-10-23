@@ -14,7 +14,12 @@ Download the latest version of the mod from our [releases page](https://github.c
 
 ## Usage
 Although we would say that using `grad_meh` is intuitive and mostly self-explanatory, we made <a href="https://youtu.be/VdIXrm_eUMc" target="_blank">this short video</a> on how to use it.  
-**HINT**: If you have any problems with the export not starting, try disabling BattlEye.
+
+## Troubleshooting
+- Make sure that `@grad_meh`, `@intercept` and `@CBA_A3` are loaded.
+- Make sure that BattlEye is disabled.
+- If you're still having problems check the rpt and grad_meh log files located in `C:\Users\<USERNAME>\AppData\Local\Arma 3` for any errors.
+- If all else fails, open a new issue and make sure you include the rpt and grad_meh log files.
 
 ## Limitations
 - To reduce complexity we only allow one export process at a time.

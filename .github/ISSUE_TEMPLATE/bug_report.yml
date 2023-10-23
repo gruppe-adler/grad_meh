@@ -1,0 +1,57 @@
+name: Bug Report
+description: File a bug report
+title: "[Bug]: "
+labels: ["bug"]
+assignees:
+  - TheWillard
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Loaded Mods
+      description: Please confirm that all required mods are actually loaded.
+      options:
+        - label: I checked that `@grad_meh` is loaded
+          required: true
+        - label: I checked that `@cba_a3` is loaded
+          required: true
+        - label: I checked that `@intcept` is loaded
+          required: true
+  - type: checkboxes
+    id: battleye
+    attributes:
+      label: Loaded Mods
+      description: BattlEye can cause problems with grad_meh. Make sure it is disabled!
+      options:
+        - label: I disabled BattlEye
+          required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Also tell us what did you expected to happen, and include the workshop links to relevant maps.
+      placeholder: Tell us what you see!
+      value: "A bug happened!"
+    validations:
+      required: true
+  - type: textarea
+    id: rpt
+    attributes:
+      label: RPT
+      description: Please copy and paste the relevant RPT. You can find it in the following directory `%localappdata%\Arma 3`
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: grad_meh Logs
+      description: Please copy and paste the relevant grad_meh log. You can find it in the following directory `%localappdata%\Arma 3`
+      render: shell
+    validations:
+      required: true
+

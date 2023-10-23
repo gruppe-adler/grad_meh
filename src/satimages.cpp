@@ -3,288 +3,327 @@
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
 
-using namespace OpenImageIO_v2_3;
+using namespace OpenImageIO_v2_4;
 
 // Range TODO: replace with C++20 Range
 #include <boost/range/counting_range.hpp>
 
-float_t mean(std::vector<float_t>& equalities)
-{
-    float_t mean = 0;
-    std::for_each(equalities.begin(), equalities.end(), [&mean](float_t& val) {
-        mean += val;
-        });
+#include <boost/algorithm/string/join.hpp>
 
-    mean /= equalities.size();
-    return mean;
-}
+#include <memory>
 
-float_t compareColors(uint8_t r1, uint8_t g1, uint8_t b1, uint8_t r2, uint8_t g2, uint8_t b2) {
-    return (1 - (std::sqrt(std::pow(r2 - r1, 2) + std::pow(g2 - g1, 2) + std::pow(b2 - b1, 2)) / GRAD_MEH_MAX_COLOR_DIF));
-}
+struct SatMapTile {
+    fs::path path = {};
+    TileTransform tt = {};
+    rvff::cxx::MipmapCxx mipmap = {};
+};
 
-float_t compareRows(std::vector<uint8_t>::iterator mipmap1It, std::vector<uint8_t>::iterator mipmap2It, uint32_t width) {
-    std::vector<float_t> equalities = {};
-    for (size_t i = 0; i < width; i++) {
-        equalities.push_back(compareColors(*mipmap1It, *(mipmap1It + 1), *(mipmap1It + 2), *mipmap2It, *(mipmap2It + 1), *(mipmap2It + 2)));
-        mipmap1It += 4;
-        mipmap2It += 4;
-    }
+struct FillerMapTile {
+    fs::path path = {};
+    std::set<TileTransform, CmpTileTransform> tt = {};
+    rvff::cxx::MipmapCxx mipmap = {};
+};
 
-    return mean(equalities);
-}
+static const std::vector<std::string> texture_config_path    { "Stage0", "texture" };
+static const std::vector<std::string> texgen_config_path     { "Stage0", "texGen" };
 
-uint32_t calcOverLap(MipMap& mipmap1, MipMap& mipmap2) {
-    std::vector<std::pair<float_t, size_t>> bestMatchingOverlaps = {};
-    auto filter = mipmap1.height > 512 ? 6 : 3;
-
-    for (uint32_t overlap = 1; overlap < (mipmap1.height / filter); overlap++) {
-        std::vector<float_t> equalities = {};
-
-        for (size_t i = 0; i < overlap; i++) {
-            auto beginRowUpper = mipmap1.data.begin() + (mipmap2.height - 1 - (overlap - i)) * (size_t)mipmap1.width * 4;
-            auto beginRowLower = mipmap2.data.begin() + i * (size_t)mipmap2.width * 4;
-
-            equalities.push_back(compareRows(beginRowUpper,
-                beginRowLower,
-                (uint32_t)mipmap1.width));
-        }
-
-        auto meanVal = mean(equalities);
-        if (meanVal > GRAD_MEH_OVERLAP_THRESHOLD) {
-            bestMatchingOverlaps.push_back({ meanVal, overlap });
-        }
-    }
-
-    uint32_t calculatedOverlap = 0;
-    float_t bestOverlap = 0;
-
-    for (auto& kvp : bestMatchingOverlaps) {
-        if (kvp.first > bestOverlap) {
-            bestOverlap = kvp.first;
-            calculatedOverlap = kvp.second;
-        }
-    }
-
-    return calculatedOverlap + 1;
-}
-
-void writeSatImages(grad_aff::Wrp& wrp, const int32_t& worldSize, std::filesystem::path& basePathSat, const std::string& worldName)
+void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::filesystem::path& basePathSat, const std::string& worldName)
 {
     std::vector<std::string> rvmats = {};
-    for (auto& rv : wrp.rvmats) {
-        if (rv != "") {
-            rvmats.push_back(rv);
+    for (auto& rv : wrp.texures) {
+        if (!rv.texture_filename.empty()) {
+            rvmats.push_back(static_cast<std::string>(rv.texture_filename));
         }
     }
 
     std::sort(rvmats.begin(), rvmats.end());
 
     if (rvmats.size() > 1) {
-        std::vector<std::string> lcoPaths = {};
-        lcoPaths.reserve(rvmats.size());
+        std::vector<SatMapTile> satMapTiles = {};
+        satMapTiles.reserve(rvmats.size());
 
-        auto rvmatPbo = grad_aff::Pbo::Pbo(findPboPath(rvmats[0]).string());
-        rvmatPbo.readPbo(false);
+        std::string pboPath = "";
+        try {
+            pboPath = findPboPath(rvmats[0]).string();
+            auto rvmatPbo = rvff::cxx::create_pbo_reader_path(pboPath);
 
-        // Has to be not empty
-        std::string lastValidRvMat = "1337";
-        std::string fillerTile = "";
-        std::string prefix = "s_";
+            // Has to be not empty
+            std::string lastValidRvMat = "1337";
+            std::optional<FillerMapTile> fillerTile = std::nullopt;
+            std::optional<TileTransform> firstPos = std::nullopt;
+            std::string prefix = "s_";
 
-        uint32_t maxX2 = 0;
-        uint32_t maxY2 = 0;
+            std::optional<rust::box<rvff::cxx::PboReaderCxx>> pbo = std::nullopt;
 
-        // TODO: refactor this when implementing the new rap api
-        for (auto& rvmatPath : rvmats) {
-
-            std::vector<std::string> parts;
-            boost::split(parts, ((fs::path)rvmatPath).filename().string(), boost::is_any_of("_"));
-
-            if (parts.size() > 1) {
-                std::vector<std::string> numbers;
-                boost::split(numbers, parts[1], boost::is_any_of("-"));
-
-                if (numbers.size() > 1) {
-                    auto x = std::stoi(numbers[0]);
-                    auto y = std::stoi(numbers[1]);
-
-                    if (x > maxX2) {
-                        maxX2 = x;
+            for (auto& rvmatPath : rvmats) {
+                if (!boost::istarts_with(((fs::path)rvmatPath).filename().string(), lastValidRvMat)) {
+                    PLOG_INFO << fmt::format("Getting data for {}", rvmatPath);
+                    auto rap_data = rvmatPbo->get_entry_data(rvmatPath);
+                    if (rap_data.empty()) {
+                        PLOG_ERROR << "Rvmat data was empty!";
                     }
+                    PLOG_INFO << fmt::format("Parsing rvmat {}", rvmatPath);
+                    auto rap = rvff::cxx::create_cfg_vec(rap_data);
+                    auto textureStr = static_cast<std::string>(rap->get_entry_as_string(texture_config_path));
+                    if (!textureStr.empty()) {
+                        auto rvmatFilename = ((fs::path)textureStr).filename().string();
+                        if (boost::istarts_with(rvmatFilename, prefix)) {
+                            lastValidRvMat = rvmatFilename.substr(0, 9);
 
-                    if (y > maxY2) {
-                        maxY2 = y;
-                    }
-                }
-            }
+                            auto tt = getTileTransform(rap);
 
-            if (!boost::istarts_with(((fs::path)rvmatPath).filename().string(), lastValidRvMat)) {
-                auto rap = grad_aff::Rap::Rap(rvmatPbo.getEntryData(rvmatPath));
-                rap.readRap();
-
-                for (auto& entry : rap.classEntries) {
-                    if (boost::iequals(entry->name, "Stage0")) {
-                        auto rapClassPtr = std::static_pointer_cast<RapClass>(entry);
-
-                        for (auto& subEntry : rapClassPtr->classEntries) {
-                            if (boost::iequals(subEntry->name, "texture")) {
-                                auto textureStr = std::get<std::string>(std::static_pointer_cast<RapValue>(subEntry)->value);
-                                auto rvmatFilename = ((fs::path)textureStr).filename().string();
-                                if (!boost::istarts_with(rvmatFilename, prefix)) {
-                                    if (fillerTile == "") {
-                                        fillerTile = textureStr;
-                                    }
-                                }
-                                else {
-                                    lcoPaths.push_back(textureStr);
-                                    lastValidRvMat = rvmatFilename.substr(0, 9);
-                                }
-                                break;
+                            if (!firstPos.has_value()) {
+                                firstPos = tt;
                             }
+
+                            if (!pbo.has_value()) {
+                                pbo = rvff::cxx::create_pbo_reader_path(findPboPath(textureStr).string());
+                            }
+
+                            auto data = (*pbo)->get_entry_data(textureStr);
+
+                            if (data.empty()) {
+                                pbo = rvff::cxx::create_pbo_reader_path(findPboPath(textureStr).string());
+                                data = (*pbo)->get_entry_data(textureStr);
+                            }
+
+                            auto mipmap = rvff::cxx::get_mipmap_from_paa_vec(data, 0);
+
+                            struct SatMapTile tile = { textureStr, tt, mipmap };
+                            satMapTiles.push_back(tile);
+                        }
+                        else {
+                            if(!fillerTile.has_value()) {
+                                auto fillerPbo = rvff::cxx::create_pbo_reader_path(findPboPath(textureStr).string());
+                                auto fillerData = fillerPbo->get_entry_data(textureStr);
+                                auto filler_mm = rvff::cxx::get_mipmap_from_paa_vec(fillerData, 0);
+
+                                struct FillerMapTile tile = { textureStr, {}, filler_mm };
+                                fillerTile = tile;
+                            }
+
+                            auto tt = getTileTransform(rap);
+
+                            if (!firstPos.has_value()) {
+                                firstPos = tt;
+                            }
+                            fillerTile->tt.emplace(tt);
                         }
                     }
+
                 }
             }
-        }
 
-        // Remove Duplicates
-        std::sort(lcoPaths.begin(), lcoPaths.end());
-        auto last = std::unique(lcoPaths.begin(), lcoPaths.end());
-        lcoPaths.erase(last, lcoPaths.end());
-
-        // Fix wrong file extensions (cup summer has png exten
-        for (auto& lcoPath : lcoPaths) {
-            fs::path lcoPathAsPath = (fs::path)lcoPath;
-            if (!boost::iequals(lcoPathAsPath.extension().string(), ".paa")) {
-                lcoPath = lcoPathAsPath.replace_extension(".paa").string();
-            }
-        }
-
-        // "strechted border" overlap is og overlap/2
-
-        // find highest x/y
-        std::vector<std::string> splitResult = {};
-        boost::split(splitResult, ((fs::path)lcoPaths[lcoPaths.size() - 1]).filename().string(), boost::is_any_of("_"));
-        uint32_t maxX = maxX2; //std::stoi(splitResult[1]);
-        uint32_t maxY = maxY2; //std::stoi(splitResult[2]);
-
-        // find two tiles "in the middle"
-        uint32_t x = maxX / 2;
-        uint32_t y = maxY / 2;
-
-        prefix = "00";
-
-        if (y > 9 && y < 100) {
-            prefix = "0";
-        }
-        else if (y >= 100) {
-            prefix = "";
-        }
-
-        std::stringstream upperLcoPathStream;
-        upperLcoPathStream << x << "_" << prefix << y << "_lco.paa";
-        auto upperPaaPath = upperLcoPathStream.str();
-
-        std::stringstream lowerLcoPathStream;
-        lowerLcoPathStream << x << "_" << prefix << (y + 1) << "_lco.paa";
-        auto lowerPaaPath = lowerLcoPathStream.str();
-
-        MipMap upperMipmap;
-        MipMap lowerMipmap;
-
-        for (auto& lcoPath : lcoPaths) {
-            if (boost::iends_with(lcoPath, upperPaaPath)) {
-                auto upperPbo = grad_aff::Pbo::Pbo(findPboPath(lcoPath).string());
-                auto upperData = upperPbo.getEntryData(lcoPath);
-                auto upperPaa = grad_aff::Paa::Paa();
-                upperPaa.readPaa(upperData);
-                upperMipmap = upperPaa.mipMaps[0];
-            }
-            if (boost::iends_with(lcoPath, lowerPaaPath)) {
-                auto lowerPbo = grad_aff::Pbo::Pbo(findPboPath(lcoPath).string());
-                auto lowerData = lowerPbo.getEntryData(lcoPath);
-                auto lowerPaa = grad_aff::Paa::Paa();
-                lowerPaa.readPaa(lowerData);
-                lowerMipmap = lowerPaa.mipMaps[0];
-            }
-        }
-
-        auto overlap = calcOverLap(upperMipmap, lowerMipmap);
-
-        ImageBuf dst(ImageSpec(upperMipmap.width + maxX * (upperMipmap.width - overlap), upperMipmap.height + maxY * (upperMipmap.height - overlap), 4, TypeDesc::UINT8));
-
-        if (fillerTile != "") {
-            auto fillerPbo = grad_aff::Pbo::Pbo(findPboPath(fillerTile).string());
-            auto fillerData = fillerPbo.getEntryData(fillerTile);
-            auto fillerPaa = grad_aff::Paa::Paa();
-            fillerPaa.readPaa(fillerData);
-
-            ImageBuf src(ImageSpec(fillerPaa.mipMaps[0].height, fillerPaa.mipMaps[0].height, 4, TypeDesc::UINT8), fillerPaa.mipMaps[0].data.data());
-
-            size_t noOfTiles = (worldSize / fillerPaa.mipMaps[0].height);
-
-            auto cr = boost::counting_range(size_t(0), noOfTiles);
-            std::for_each(std::execution::par_unseq, cr.begin(), cr.end(), [noOfTiles, &dst, fillerPaa, src](size_t i) {
-                for (size_t j = 0; j < noOfTiles; j++) {
-                    ImageBufAlgo::paste(dst, (i * fillerPaa.mipMaps[0].height), (j * fillerPaa.mipMaps[0].height), 0, 0, src);
-                }
-                });
-        }
-
-        auto pbo = grad_aff::Pbo::Pbo(findPboPath(lcoPaths[0]).string());
-
-        for (auto& lcoPath : lcoPaths) {
-            auto data = pbo.getEntryData(lcoPath);
-
-            if (data.empty()) {
-                pbo = grad_aff::Pbo::Pbo(findPboPath(lcoPath).string());
-                data = pbo.getEntryData(lcoPath);
-            }
-
-            auto paa = grad_aff::Paa::Paa();
-            paa.readPaa(data);
-
-            std::vector<std::string> splitResult = {};
-            boost::split(splitResult, ((fs::path)lcoPath).filename().string(), boost::is_any_of("_"));
-
-            ImageBuf src(ImageSpec(paa.mipMaps[0].height, paa.mipMaps[0].height, 4, TypeDesc::UINT8), paa.mipMaps[0].data.data());
-
-            uint32_t x = std::stoi(splitResult[1]);
-            uint32_t y = std::stoi(splitResult[2]);
-
-            ImageBufAlgo::paste(dst, (x * paa.mipMaps[0].height - x * overlap), (y * paa.mipMaps[0].height - y * overlap), 0, 0, src);
-        }
-
-        // https://github.com/pennyworth12345/A3_MMSI/wiki/Mapframe-Information#stretching-at-edge-tiles
-        maxX += 1;
-
-        auto hasEqualStrechting = (worldSize == (upperMipmap.width * maxX)) || (worldSize == ((upperMipmap.width - overlap) * maxX));
-        int32_t strechedBorderSizeStart = overlap / 2;
-        int32_t strechedBorderSizeEnd = strechedBorderSizeStart;
-
-        if (!hasEqualStrechting) {
-            int32_t tileSizeAfterOverlap = upperMipmap.width - overlap;
-            int32_t temp = (tileSizeAfterOverlap * maxX) - worldSize;
-            temp -= (overlap / 2);
-            int32_t lastTileRealWidth = (tileSizeAfterOverlap - temp) % upperMipmap.width;
-            strechedBorderSizeEnd = upperMipmap.width - lastTileRealWidth;
-        }
-
-        dst = ImageBufAlgo::cut(dst, ROI(strechedBorderSizeStart, dst.spec().width - strechedBorderSizeEnd, strechedBorderSizeStart, dst.spec().height - strechedBorderSizeEnd));
-        size_t tileSize = dst.spec().width / 4;
-
-        auto cr = boost::counting_range(0, 4);
-        std::for_each(std::execution::par_unseq, cr.begin(), cr.end(), [basePathSat, dst, tileSize](int i) {
-            auto curWritePath = basePathSat / std::to_string(i);
-            if (!fs::exists(curWritePath)) {
-                fs::create_directories(curWritePath);
-            }
-
-            for (int32_t j = 0; j < 4; j++) {
-                ImageBuf out = ImageBufAlgo::cut(dst, ROI(i * tileSize, (i + 1) * tileSize, j * tileSize, (j + 1) * tileSize));
-                out.write((curWritePath / std::to_string(j).append(".png")).string());
-            }
+            // Remove Duplicates
+            std::sort(satMapTiles.begin(), satMapTiles.end(), [](const auto& lhs, const auto& rhs) {
+                return lhs.path.string() < rhs.path.string();
             });
+            auto last = std::unique(satMapTiles.begin(), satMapTiles.end(), [](const auto& lhs, const auto& rhs) {
+                return lhs.path == rhs.path;
+            });
+            satMapTiles.erase(last, satMapTiles.end());
+
+            auto tileSize = 0;
+
+            // Fix wrong file extensions (cup summer has png extension)
+            for (auto& smt : satMapTiles) {
+                fs::path lcoPathAsPath = smt.path;
+                if (!boost::iequals(lcoPathAsPath.extension().string(), ".paa")) {
+                    smt.path = lcoPathAsPath.replace_extension(".paa").string();
+                }
+
+                auto mmSize = std::max(smt.mipmap.width, smt.mipmap.height);
+                if (tileSize < mmSize) {
+                    tileSize = mmSize;
+                }
+            }
+
+            if (tileSize == 4 && ba::iequals(worldName, "vr")) {
+                tileSize = 1024;
+            }
+
+            auto& firstSmt = satMapTiles[0];
+
+            auto tileWidth = tileSize;
+            auto tileHeight = tileSize;
+
+            TileTransform firstTT = firstSmt.tt;
+            if (firstPos.has_value()) {
+                firstTT = *firstPos;
+            }
+
+            auto firstWorldPos = firstTT.pos;
+            auto firstAside = firstTT.aside;
+
+            auto scaleFactor = firstAside[0] * tileWidth;
+
+            if (scaleFactor != 1) {
+                scaleFactor += 0.5;
+
+                auto newWidth = static_cast<int32_t>(scaleFactor * tileWidth);
+
+                tileWidth = newWidth;
+                tileHeight = newWidth;
+            }
+
+            auto firstXPos = static_cast<int32_t>(firstWorldPos[0] * tileWidth);
+            auto firstYPos = static_cast<int32_t>(firstWorldPos[1] * tileHeight);
+
+            int32_t finalSatMapSize = firstYPos - firstXPos;
+
+            ImageBuf dst(ImageSpec(finalSatMapSize, finalSatMapSize, 4, TypeDesc::UINT8));
+            auto& dstSpec = dst.spec();
+
+            if (fillerTile.has_value()) {
+                auto filler_mm = fillerTile->mipmap;
+
+                auto fillerWidth = filler_mm.width;
+                auto fillerHeight = filler_mm.height;
+
+                ImageBuf src(ImageSpec(fillerWidth, fillerHeight, 4, TypeDesc::UINT8), filler_mm.data.data());
+
+                int32_t numOfSubTiles = tileWidth / filler_mm.width;
+
+                ImageBuf fullFillerTile(ImageSpec(tileWidth, tileHeight, 4, TypeDesc::UINT8));
+
+                for (int32_t i = 0; i < numOfSubTiles; i++) {
+                    for (int32_t j = 0; j < numOfSubTiles; j++) {
+                        ImageBufAlgo::paste(fullFillerTile, i * fillerWidth, j * fillerHeight, 0, 0, src);
+                    }
+                }
+
+                #ifdef _DEBUG
+                auto copy_filler = fullFillerTile.copy(TypeDesc::UINT8);
+                copy_filler.write((basePathSat / "debug_filler_tile.exr").string());
+                #endif
+
+                auto& fillterTTs = fillerTile->tt;
+
+                for (auto& tt : fillterTTs) {
+                    auto pos = tt.pos;
+                    auto xPos = static_cast<int32_t>(pos[0] * tileWidth * -1);
+                    auto yPos = static_cast<int32_t>(((pos[1] * tileHeight) - dstSpec.width) * -1);
+
+                    ImageBufAlgo::paste(dst, xPos, yPos, 0, 0, fullFillerTile);
+                }
+
+                //#ifdef _DEBUG
+                /*auto copy_full = dst.copy(TypeDesc::UINT8);
+                copy_full.write((basePathSat / "debug_sat_map_only_filler.exr").string());*/
+                //#endif
+            }
+
+            //auto dstOG = dst.copy(dst.spec().format);
+
+            int c = 0;
+            for (auto& smt : satMapTiles) {
+                auto mipmap = smt.mipmap;
+
+                ImageBuf src(ImageSpec(mipmap.width, mipmap.height, 4, TypeDesc::UINT8), mipmap.data.data());
+
+                if (mipmap.width == 4 && mipmap.height == 4) {
+                    src = ImageBufAlgo::resize(src, "", 0, ROI(0, tileWidth, 0, tileHeight));
+                    PLOG_INFO << fmt::format("4x4 filler method detected, resizing 4x4 tiles to {}x{} !", tileWidth, tileHeight);
+                }
+
+                auto srcWidth = src.spec().width;
+
+                auto asideX = smt.tt.aside[0];
+                auto scaleFactor = asideX * srcWidth;
+
+                if (scaleFactor != 1) {
+                    scaleFactor += 0.5;
+
+                    auto newWidth = static_cast<int32_t>(scaleFactor * srcWidth);
+
+                    src = ImageBufAlgo::resize(src, "", 0, ROI(0, newWidth, 0, newWidth));
+                }
+
+                auto srcSpec = src.spec();
+
+                auto width = srcSpec.width;
+                auto height = srcSpec.height;
+
+                auto pos = smt.tt.pos;
+
+                auto xPos = static_cast<int32_t>(pos[0] * width * -1);
+                auto yPos = static_cast<int32_t>(((pos[1] * height) - dstSpec.width) * -1);
+
+                /*float red[4] = { 1, 0, 0, 1 };
+                ImageBufAlgo::render_box(src, 0, 0, width-1, height-1, red);*/
+
+                /*auto debugText = fmt::format("rvmat: {}\nxPos: {}\nyPos: {}\nwidth: {}\nheight: {}\nscaleFactor: {}\npos[0] {}\npos[1] {}\naside[0] {}", 
+                    smt.path.filename().string(), xPos, yPos, width, height, scaleFactor, pos[0], pos[1], asideX);
+                ImageBufAlgo::render_text(src, 50, 50, debugText, 20, "Arial", red, ImageBufAlgo::TextAlignX::Left);*/
+
+                ImageBufAlgo::paste(dst, xPos, yPos, 0, 0, src);
+
+                /*auto copy = dstOG.copy(dstOG.spec().format);
+                ImageBufAlgo::paste(copy, xPos, yPos, 0, 0, src);
+                copy.write((basePathSat / fmt::format("debug_part_{}.exr", c++)).string());*/
+
+                /*auto copy_party = dst.copy(TypeDesc::UINT8);
+                copy_party.write((basePathSat / fmt::format("debug_part_{}.exr", c++)).string());*/
+            }
+
+            //#ifdef _DEBUG
+            /*auto copy = dst.copy(TypeDesc::UINT8);
+            copy.write((basePathSat / "debug_full_streched.exr").string());*/
+            //#endif
+
+            int32_t finalTileSize = dst.spec().width / 4;
+
+            auto cr = boost::counting_range(0, 4);
+            std::for_each(std::execution::par_unseq, cr.begin(), cr.end(), [basePathSat, dst, finalTileSize](int i) {
+                auto curWritePath = basePathSat / std::to_string(i);
+                if (!fs::exists(curWritePath)) {
+                    fs::create_directories(curWritePath);
+                }
+
+                for (int32_t j = 0; j < 4; j++) {
+                    ImageBuf out = ImageBufAlgo::cut(dst, ROI(i * finalTileSize, (i + 1) * finalTileSize, j * finalTileSize, (j + 1) * finalTileSize));
+                    out.write((curWritePath / std::to_string(j).append(".png")).string());
+                }
+            });
+        }
+        catch (const rust::Error& ex) {
+            PLOG_ERROR << fmt::format("Exception in writeSatImages PBO: {}", pboPath);
+            PLOG_ERROR << ex.what();
+            throw;
+        }
     }
 }
+
+TileTransform getTileTransform(rust::Box<rvff::cxx::CfgCxx>& rap) {
+    auto texGenValue = rap->get_entry_as_number(texgen_config_path);
+
+    auto tex_gen_class = fmt::format("TexGen{}", texGenValue);
+    std::vector<std::string> texgenDirConfigPath { tex_gen_class, "uvTransform", "pos" };
+    std::vector<std::string> texgenAsideConfigPath { tex_gen_class, "uvTransform", "aside" };
+
+    auto posArr = rap->get_entry_as_array_float(texgenDirConfigPath);
+    std::vector<float_t> posArrStd(posArr.begin(), posArr.end());
+
+    if (posArrStd.size() < 2) {
+        auto errMsg = fmt::format("arr size for '{}' was < 2", ba::join(texgenDirConfigPath, " >> "));
+        PLOG_ERROR << errMsg;
+        throw new std::runtime_error(errMsg);
+    }
+
+    auto asideArr = rap->get_entry_as_array_float(texgenAsideConfigPath);
+    std::vector<float_t> asideArrStd(asideArr.begin(), asideArr.end());
+
+    if (asideArrStd.size() < 2) {
+        auto errMsg = fmt::format("arr size for '{}' was < 2", ba::join(texgenAsideConfigPath, " >> "));
+        PLOG_ERROR << errMsg;
+        throw new std::runtime_error(errMsg);
+    }
+
+    TileTransform tt {
+        asideArrStd,
+        posArrStd
+    };
+
+    return tt;
+}
+
