@@ -62,8 +62,13 @@ jobs:
     # zip it
     - uses: papeloto/action-zip@v1
       with:
-        files: \@${{ steps.build.outputs.mod_name }}/
+        files: \@${{ steps.build.outputs.release_path }}/
         dest: \@${{ steps.build.outputs.mod_name }}.zip
+
+    - uses: actions/upload-artifact@v1
+      with:
+        name: test
+        path: \@${{ steps.build.outputs.mod_name }}.zip
 
     # release it
     - uses: "marvinpinto/action-automatic-releases@latest"
