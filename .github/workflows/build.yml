@@ -72,4 +72,4 @@ jobs:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         prerelease: true
         files: |
-          \@${{needs.job_build_cpp.outputs.modName}}.zip
+          \@${{ steps.build.outputs.mod_name }}.zip
