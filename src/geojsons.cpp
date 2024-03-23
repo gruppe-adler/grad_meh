@@ -229,10 +229,17 @@ void writeRoads(
 
         auto prefix = roads_pbo->get_prefix();
 
+        bool noRoadFilesExtracted = true;
         for (auto& entry : roads_pbo->get_pbo().entries) {
             if (boost::istarts_with((((fs::path)static_cast<std::string>(prefix)) / static_cast<std::string>(entry.filename)).string(), roadsPathDir)) {
                 roads_pbo->extract_single_file(static_cast<std::string>(entry.filename), basePathGeojsonTemp.string(), false);
+                noRoadFilesExtracted = false;
             }
+        }
+
+        if (noRoadFilesExtracted) {
+            PLOG_ERROR << "Couldn't find or extract any road files. No roads will be exported!";
+            return;
         }
 
         auto gdalPath = getDllPath();
