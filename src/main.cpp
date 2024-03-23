@@ -209,6 +209,7 @@ void extractMap(const std::string &worldName, const std::string &worldPath, std:
     startMsg << "]";
 
     prettyDiagLog(startMsg.str());
+    PLOG_INFO << startMsg.str();
 
     if (!fs::exists(basePath))
     {

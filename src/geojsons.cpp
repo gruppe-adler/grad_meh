@@ -161,7 +161,10 @@ void writeHouses(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson
         mapFeature["properties"] = { { "color", color }, { "height", houseHeight }, { "position", housePos } };
         house.push_back(mapFeature);
     }
-    writeGZJson("house.geojson.gz", basePathGeojson, house);
+
+    if (!house.is_null() && house.is_array() && !house.empty()) {
+        writeGZJson("house.geojson.gz", basePathGeojson, house);
+    }
 }
 
 void writeObjects(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson)
@@ -226,10 +229,17 @@ void writeRoads(
 
         auto prefix = roads_pbo->get_prefix();
 
+        bool noRoadFilesExtracted = true;
         for (auto& entry : roads_pbo->get_pbo().entries) {
             if (boost::istarts_with((((fs::path)static_cast<std::string>(prefix)) / static_cast<std::string>(entry.filename)).string(), roadsPathDir)) {
                 roads_pbo->extract_single_file(static_cast<std::string>(entry.filename), basePathGeojsonTemp.string(), false);
+                noRoadFilesExtracted = false;
             }
+        }
+
+        if (noRoadFilesExtracted) {
+            PLOG_ERROR << "Couldn't find or extract any road files. No roads will be exported!";
+            return;
         }
 
         auto gdalPath = getDllPath();
@@ -811,7 +821,9 @@ void writeRiver(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson)
         rivers.push_back(river);
     }
 
-    writeGZJson("river.geojson.gz", basePathGeojson, rivers);
+    if (!rivers.is_null() && rivers.is_array() && !rivers.empty()) {
+        writeGZJson("river.geojson.gz", basePathGeojson, rivers);
+    }
 }
 
 void writeMounts(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson) {
