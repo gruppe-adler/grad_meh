@@ -1,4 +1,5 @@
-#define MAJOR 0
-#define MINOR 7
-#define PATCHLVL 1
-#define BUILD 8
+#define MAJOR 1
+#define MINOR 0
+#define PATCHLVL 0
+#define BUILD beta.3
+

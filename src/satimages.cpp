@@ -3,7 +3,7 @@
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
 
-using namespace OpenImageIO_v2_4;
+using namespace OpenImageIO_v2_5;
 
 // Range TODO: replace with C++20 Range
 #include <boost/range/counting_range.hpp>

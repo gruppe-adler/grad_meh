@@ -2,28 +2,28 @@
   "version": 5,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 23,
+    "minor": 28,
     "patch": 0
   },
   "configurePresets": [
     {
-      "name": "ninja-debug-vcpkg-win",
-      "displayName": "Ninja/Windows/Debug/VCPKG Config",
-      "description": "Ninja/Windows/Debug/VCPKG Config",
-      "binaryDir": "${sourceDir}/builds/${presetName}",
+      "name": "ninja-debug-win",
+      "displayName": "Ninja/Windows/Debug/Config",
+      "description": "Ninja/Windows/Debug/Config",
+      "binaryDir": "${sourceDir}/build/${presetName}",
       "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_TOOLCHAIN_FILE": {
           "type": "FILEPATH",
-          "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+          "value": "${sourceDir}/build/conan_toolchain.cmake"
         },
         "CMAKE_INSTALL_PREFIX": {
           "type": "FILEPATH",
           "value": "${sourceDir}/install"
         },
         "USE_64BIT_BUILD": true,
-        "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+        "USE_STATIC_LINKING": true,
         "CMAKE_C_COMPILER": "cl",
         "CMAKE_CXX_COMPILER": "cl"
       },
@@ -34,10 +34,10 @@
       }
     },
     {
-      "name": "ninja-release-vcpkg-win",
-      "displayName": "Ninja/Windows/Release/VCPKG Config",
-      "inherits": "ninja-debug-vcpkg-win",
-      "description": "Ninja/Windows/Release/VCPKG Config",
+      "name": "ninja-release-win",
+      "displayName": "Ninja/Windows/Release/Config",
+      "inherits": "ninja-debug-win",
+      "description": "Ninja/Windows/Release/Config",
       "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
@@ -46,18 +46,18 @@
   ],
   "buildPresets": [
     {
-      "name": "ninja-msvc-vcpkg-debug",
-      "configurePreset": "ninja-debug-vcpkg-win",
-      "displayName": "Build ninja-msvc-vcpkg (Debug)",
-      "description": "Build ninja-msvc-vcpkg (Debug) Configurations",
+      "name": "ninja-msvc-debug",
+      "configurePreset": "ninja-debug-win",
+      "displayName": "Build ninja-msvc (Debug)",
+      "description": "Build ninja-msvc (Debug) Configurations",
       "targets": "install",
       "configuration": "Debug"
     },
     {
-      "name": "ninja-msvc-vcpkg-release",
-      "configurePreset": "ninja-release-vcpkg-win",
-      "displayName": "Build ninja-msvc-vcpkg (Release)",
-      "description": "Build ninja-msvc-vcpkg Configurations",
+      "name": "ninja-msvc-release",
+      "configurePreset": "ninja-release-win",
+      "displayName": "Build ninja-msvc (Release)",
+      "description": "Build ninja-msvc Configurations",
       "targets": "install",
       "configuration": "Release"
     }
