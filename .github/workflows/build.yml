@@ -4,19 +4,13 @@ on:
   push:
   pull_request:
 
-env:
-  VCPKG_COMMIT: cc97b4536ae749ec0e4f643488b600b217540fb3
-  VCPKG_DIR: C:/deps/vcpkg
-  CMAKE_PRESET: ninja-msvc-vcpkg
-
 jobs:
   job_build_cpp:
     name: win
     runs-on: windows-latest
 
     steps:
-    # Checkout
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         submodules: true
         fetch-depth: 0
@@ -27,26 +21,35 @@ jobs:
         vsversion: 2022
         toolset: 14
 
-    # Install latest CMake
     - uses: lukka/get-cmake@latest
 
-    - name: Create folder
+    - name: Install Conan
+      id: conan
+      uses: turtlebrowser/get-conan@main
+      
+    - name: Print conan version
+      run: echo "${{ steps.conan.outputs.version }}"
+
+    - name: cache ~/.conan2
+      id: cache-conan
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-conan-modules
+      with:
+        path: ~/.conan2/
+        key: ${{ runner.os }}-builder-${{ env.cache-name }}-${{ hashFiles('conanfile.py') }}
+        restore-keys: ${{ runner.os }}-builder-${{ env.cache-name }}-
+          
+    - name: Conan install
+      run: conan install . -s build_type=Release --output-folder=build --build=missing -c tools.cmake.cmaketoolchain:generator=Ninja --profile:host=./ci-conan-profile --profile:build=./ci-conan-profile
+
+    - name: Create build dir
+      run: mkdir build/ninja-release-win
+      
+    - name: Run CMake 
       run: |
-        mkdir ${{ env.VCPKG_DIR }}
-
-    # Setup vcpkg and build deps
-    - name: Restore artifacts, or Run vcpkg, build and cache artifacts
-      uses: lukka/run-vcpkg@v11
-      id: runvcpkg
-      with:
-        vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
-        vcpkgDirectory: ${{ env.VCPKG_DIR }}
-
-    - name: Run CMake consuming CMakePresets.json and vcpkg.json by mean of vcpkg.
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: ninja-release-vcpkg-win
-        buildPreset: ninja-msvc-vcpkg-release
+        cmake --preset ninja-release-win
+        cmake --build --preset ninja-msvc-release
 
     # Build the mod
     - uses: gruppe-adler/action-release-with-hemtt@v3
@@ -62,7 +65,7 @@ jobs:
     # zip it
     - uses: papeloto/action-zip@v1
       with:
-        files: \@${{ steps.build.outputs.mod_name }}/
+        files: ${{ steps.build.outputs.release_path }}
         dest: \@${{ steps.build.outputs.mod_name }}.zip
 
     # release it

@@ -39,6 +39,7 @@
 build
 *.pbo
 CMakeSettings.json
+CMakeUserPresets.json
 
 # CMake
 CMakeCache.txt
