@@ -38,7 +38,6 @@ jobs:
       with:
         path: ~/.conan2/
         key: ${{ runner.os }}-builder-${{ env.cache-name }}-${{ hashFiles('conanfile.py') }}
-        restore-keys: ${{ runner.os }}-builder-${{ env.cache-name }}-
           
     - name: Conan install
       run: conan install . -s build_type=Release --output-folder=build --build=missing -c tools.cmake.cmaketoolchain:generator=Ninja --profile:host=./ci-conan-profile --profile:build=./ci-conan-profile
