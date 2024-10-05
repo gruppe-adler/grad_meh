@@ -26,7 +26,7 @@
 #include <pcl/search/impl/search.hpp>
 #include <pcl/search/impl/organized.hpp>
 
-#include <polyclipping/clipper.hpp>
+#include <clipper2/clipper.h>
 
 #include <ogr_geometry.h>
 
@@ -69,7 +69,7 @@ void writeArea(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson, const std::ve
     ec.extract(cluster_indices);
 
     pcl::PCDWriter writer;
-    ClipperLib::Paths paths;
+    Clipper2Lib::Paths64 paths;
     paths.reserve(nPoints);
 
     for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
@@ -82,19 +82,20 @@ void writeArea(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson, const std::ve
         cloudCluster->is_dense = true;
 
         for (auto& point : *cloudCluster) {
-            ClipperLib::Path polygon;
-            polygon.push_back(ClipperLib::IntPoint(point.x - buffer, point.y));
-            polygon.push_back(ClipperLib::IntPoint(point.x, point.y - buffer));
-            polygon.push_back(ClipperLib::IntPoint(point.x + buffer, point.y));
-            polygon.push_back(ClipperLib::IntPoint(point.x, point.y + buffer));
+            Clipper2Lib::Path64 polygon;
+            polygon.push_back(Clipper2Lib::Point64(point.x - buffer, point.y));
+            polygon.push_back(Clipper2Lib::Point64(point.x, point.y - buffer));
+            polygon.push_back(Clipper2Lib::Point64(point.x + buffer, point.y));
+            polygon.push_back(Clipper2Lib::Point64(point.x, point.y + buffer));
             paths.push_back(polygon);
         }
     }
 
-    ClipperLib::Paths solution;
-    ClipperLib::Clipper c;
-    c.AddPaths(paths, ClipperLib::ptSubject, true);
-    c.Execute(ClipperLib::ctUnion, solution, ClipperLib::pftNonZero);
+    //Clipper2Lib::Paths64 solution;
+    //Clipper2Lib::Clip c;
+    //c.AddPaths(paths, Clipper2Lib::ptSubject, true);
+    //c.Execute(Clipper2Lib::ctUnion, solution, Clipper2Lib::pftNonZero);
+    Clipper2Lib::Paths64 solution = Clipper2Lib::Union(paths, Clipper2Lib::FillRule::NonZero);
 
     std::vector<OGRLinearRing*> rings;
     rings.reserve(solution.size());
@@ -102,7 +103,7 @@ void writeArea(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson, const std::ve
     for (auto& path : solution) {
         auto ring = new OGRLinearRing();
         for (auto& point : path) {
-            ring->addPoint(point.X, point.Y);
+            ring->addPoint(point.x, point.y);
         }
         ring->closeRings();
         rings.push_back(ring);

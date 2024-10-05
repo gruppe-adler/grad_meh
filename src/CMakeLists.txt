@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.15)
+cmake_minimum_required (VERSION 3.28)
 
 
 file(GLOB_RECURSE INTERCEPT_PLUGIN_SOURCES *.h *.hpp *.c *.cpp)
@@ -21,9 +21,10 @@ set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME ON)
 
-find_package(Boost 1.82.0 REQUIRED COMPONENTS system filesystem thread iostreams) 
+find_package(Boost 1.84.0 REQUIRED COMPONENTS system filesystem thread iostreams) 
 
 # OIIO
+message(STATIC ${INTERCEPT_LINK_TYPE})
 if("${INTERCEPT_LINK_TYPE}" STREQUAL "static")
 	add_definitions(-DOIIO_STATIC_DEFINE)
 	add_definitions(-DGRAD_AFF_STATIC_DEFINE)
@@ -46,7 +47,7 @@ find_package(GDAL CONFIG REQUIRED)
 find_package(PCL CONFIG REQUIRED)
 
 # Clipper
-find_package(polyclipping CONFIG REQUIRED)
+find_package(clipper2 CONFIG REQUIRED)
 
 
 #include the Intercept headers from the submodule
@@ -82,7 +83,7 @@ include(FetchContent)
 FetchContent_Declare(
     Corrosion
     GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
-    GIT_TAG master # Optionally specify a commit hash, version tag or branch here
+    GIT_TAG v0.5.0 # Optionally specify a commit hash, version tag or branch here
 )
 # Set any global configuration variables such as `Rust_TOOLCHAIN` before this line!
 FetchContent_MakeAvailable(Corrosion)
@@ -90,7 +91,7 @@ FetchContent_MakeAvailable(Corrosion)
 # Import targets defined in a package or workspace manifest `Cargo.toml` file
 
 corrosion_import_crate(MANIFEST_PATH rvff-cxx/Cargo.toml)
-corrosion_add_cxxbridge(rust-lib CRATE rvff-cxx MANIFEST_PATH rvff-cxx FILES lib.rs)
+corrosion_add_cxxbridge(rust-lib CRATE rvff_cxx MANIFEST_PATH rvff-cxx FILES lib.rs)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_library(${INTERCEPT_PLUGIN_NAME} SHARED ${INTERCEPT_PLUGIN_SOURCES} ${INTERCEPT_HOST_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
@@ -99,13 +100,13 @@ target_include_directories(${INTERCEPT_PLUGIN_NAME} PUBLIC ${OPENIMAGEIO_INCLUDE
 
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} GDAL::GDAL)
 
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} OpenImageIO::OpenImageIO OpenImageIO::OpenImageIO_Util)
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} openimageio::openimageio)
 
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${Boost_LIBRARIES})
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} nlohmann_json nlohmann_json::nlohmann_json)
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} fmt::fmt-header-only)
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} ${PCL_LIBRARIES})
-target_link_libraries(${INTERCEPT_PLUGIN_NAME} polyclipping::polyclipping)
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} nlohmann_json::nlohmann_json)
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} fmt::fmt)
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} PCL::PCL)
+target_link_libraries(${INTERCEPT_PLUGIN_NAME} clipper2::clipper2)
 
 target_link_libraries(${INTERCEPT_PLUGIN_NAME} plog::plog)
 
@@ -117,11 +118,7 @@ endif()
 
 if(MSVC)
     # Note: This is required because we use `cxx` which uses `cc` to compile and link C++ code.
-	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-		corrosion_set_env_vars(rvff-cxx "CFLAGS=-MTd" "CXXFLAGS=-MTd")
-	else()
-		corrosion_set_env_vars(rvff-cxx "CFLAGS=-MT" "CXXFLAGS=-MT")
-	endif()
+	corrosion_set_env_vars(rvff_cxx "CFLAGS=-MD$<$<CONFIG:Debug>:d>" "CXXFLAGS=-MD$<$<CONFIG:Debug>:d>")
 endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${INTERCEPT_INCLUDE_PATH})
@@ -138,7 +135,7 @@ else()
 	set(CMAKE_CXX_FLAGS_RELEASE "/MT /Zi /O2 /Ob1 /EHsc /MP") #with debug info
 	# /FORCE:MULTIPLE requrired to ignore  second definition of tiff stuff in gdal (conflicting with oiio?)
 	target_link_options(${INTERCEPT_PLUGIN_NAME} PUBLIC "/FORCE:MULTIPLE")
-	set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "/DEBUG:FULL /NODEFAULT:LIBCMTD") 
+	set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "/DEBUG:FULL")# /NODEFAULT:LIBCMTD") 
 	set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "/OPT:REF /DEBUG:FULL /NODEFAULT:LIBCMTD") 
 endif()
 
@@ -148,6 +145,10 @@ message("Arma Path from Registry: " ${ARMA_PATH})
 if("${PLUGIN_FOLDER}" STREQUAL "")
 	SET(PLUGIN_FOLDER "${ARMA_PATH}\\@grad_meh\\intercept")
 endif()
+
+message("Build Type: " ${CMAKE_BUILD_TYPE})
+message("Use Static Linking: " ${USE_STATIC_LINKING})
+message("Cmake Install Prefix: " ${CMAKE_INSTALL_PREFIX})
 
 message("grad_meh plugin folder: " ${PLUGIN_FOLDER})
 if(NOT "${PLUGIN_FOLDER}" STREQUAL "")

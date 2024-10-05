@@ -970,7 +970,7 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
     for (auto& genericMapType : genericMapTypes) {
         if (objectMap.find(genericMapType) != objectMap.end()) {
             if (genericMapType == "tree") {
-                writeArea(wrp, basePathGeojson, objectMap["tree"], 15, 5, 10, 7, "forest");
+                writeArea(wrp, basePathGeojson, objectMap["tree"], 13, 4, 10, 7, "forest");
             }
             else if (genericMapType == "rock") {
                 writeArea(wrp, basePathGeojson, objectMap["rock"], 10, 4, 10, 7, "rocks");
