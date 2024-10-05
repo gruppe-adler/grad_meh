@@ -299,6 +299,10 @@ void extractMap(const std::string &worldName, const std::string &worldPath, std:
     return;
 }
 
+game_value exportRunningCommand(game_state &gs) {
+    return gradMehIsRunning;
+}
+
 game_value exportMapCommand(game_state &gs, SQFPar rightArg)
 {
 
@@ -413,6 +417,8 @@ void intercept::pre_start()
         client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::SCALAR, game_data_type::STRING);
     static auto grad_meh_export_map_array =
         client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::SCALAR, game_data_type::ARRAY);
+    static auto grad_meh_export_running =
+        client::host::register_sqf_command("gradMehExportRunning", "Check if an export is currently running", exportRunningCommand, game_data_type::BOOL);
 
 #if WIN32
     std::filesystem::path a3_log_path;

@@ -38,7 +38,7 @@ We export the following from Arma 3 maps:
 All exported files can be found in the `grad_meh` subdirectory of your Arma 3 installation directory. Each map has its own subdirectory, which structure is further explained [here](./docs/output_spec.md).
 
 ## Scripting API
-Gruppe Adler Map Exporter adds a script command, which is used by the UI. If you want to, you could leverage that scripting command for your own purposes.
+Gruppe Adler Map Exporter adds two script commands, which are used by the UI. If you want to, you could leverage that scripting command for your own purposes.
 
 ### `gradMehExportMap`
 |**Syntax**| |  
@@ -58,6 +58,17 @@ Gruppe Adler Map Exporter adds a script command, which is used by the UI. If you
 |Return Value| [Number](https://community.bistudio.com/wiki/Number) - Status code<br>`0` - Export process started nominally<br>`1` - Error: Invalid arguments given<br>`2` - Error: Another export is currently running<br>`3` - Error: Map wasn't found in config file<br>`4` - Error: Map invalid because `worldSize` field in config is missing<br>`5` - Error: PBO of map's WRP not found (Most likely because it is an EBO)<br>`6` - Error: PBO map still populating (MEH has to do this once upon game start, before it can export anything)
 |||
 |Examples|`gradMehExportMap ["Stratis", true, true, true, true, true];`|  
+
+### `gradMehExportRunning`
+|**Syntax**| |  
+|---|---|  
+|Description| Check if an export is currently running. |
+|||
+|Syntax| **gradMehExportRunning**
+|||
+|Return Value| [Boolean](https://community.bistudio.com/wiki/Boolean) - `true` is export is currently running, `false` if none is running
+|||
+|Examples|`private _running = gradMehExportRunning;`|  
 
 ## FAQ
 
