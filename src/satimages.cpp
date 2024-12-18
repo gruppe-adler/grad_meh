@@ -65,6 +65,13 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
                     PLOG_INFO << fmt::format("Parsing rvmat {}", rvmatPath);
                     auto rap = rvff::cxx::create_cfg_vec(rap_data);
                     auto textureStr = static_cast<std::string>(rap->get_entry_as_string(texture_config_path));
+
+                    // Fix wrong file extensions (cup summer has png extension)
+                    auto textureStrAsPath = fs::path(textureStr);
+                    if (!boost::iequals(textureStrAsPath.extension().string(), ".paa")) {
+                        textureStr = textureStrAsPath.replace_extension(".paa").string();
+                    }
+
                     if (!textureStr.empty()) {
                         auto rvmatFilename = ((fs::path)textureStr).filename().string();
                         if (boost::istarts_with(rvmatFilename, prefix)) {
