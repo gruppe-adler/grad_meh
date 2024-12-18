@@ -411,13 +411,17 @@ game_value exportMapCommand(game_state &gs, SQFPar rightArg)
     }
 }
 
+types::registered_sqf_function grad_meh_export_map_string;
+types::registered_sqf_function grad_meh_export_map_array;
+types::registered_sqf_function grad_meh_export_running;
+
 void intercept::pre_start()
 {
-    static auto grad_meh_export_map_string =
+    grad_meh_export_map_string =
         client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::SCALAR, game_data_type::STRING);
-    static auto grad_meh_export_map_array =
+    grad_meh_export_map_array =
         client::host::register_sqf_command("gradMehExportMap", "Exports the given map", exportMapCommand, game_data_type::SCALAR, game_data_type::ARRAY);
-    static auto grad_meh_export_running =
+    grad_meh_export_running =
         client::host::register_sqf_command("gradMehExportRunning", "Check if an export is currently running", exportRunningCommand, game_data_type::BOOL);
 
 #if WIN32
