@@ -89,8 +89,8 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
 
                             auto mipmap = rvff::cxx::get_mipmap_from_paa_vec(data, 0);
 
-                            struct SatMapTile tile = { textureStr, tt, mipmap };
-                            satMapTiles.push_back(tile);
+                            struct SatMapTile tile = { textureStr, tt, std::move(mipmap) };
+                            satMapTiles.push_back(std::move(tile));
                         }
                         else {
                             if(!fillerTile.has_value()) {
