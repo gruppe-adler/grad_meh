@@ -4,6 +4,9 @@ from conan.tools.cmake import CMakeToolchain, CMake, cmake_layout, CMakeDeps
 class MehRecipe(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeToolchain", "CMakeDeps"
+    default_options = {
+        "gdal/*:with_arrow": False
+    }
 
     def requirements(self):
         self.requires("fmt/10.2.1")
