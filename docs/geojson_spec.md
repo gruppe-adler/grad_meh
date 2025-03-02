@@ -83,6 +83,7 @@ Bridges can be split in the same categories as [roads](#11-roads). Like [roads](
 - Properties: none
 
 ## 13. Rivers
+Only includes `MapType` `river` objects [introduced in February 2023](https://dev.arma3.com/post/techrep-00053). Weferlingen is the only map known to use these.
 - File: `river.geojson.gz`
 - Geometry-Type: [Polygon](https://tools.ietf.org/html/rfc7946#section-3.1.6)
 - Properties: none
