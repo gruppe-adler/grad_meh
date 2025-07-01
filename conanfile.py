@@ -18,7 +18,7 @@ class MehRecipe(ConanFile):
         self.requires("openimageio/2.5.9.0")
         self.requires("libpng/1.6.43", override=True)
         self.requires("boost/1.84.0", override=True)
-        self.requires("expat/[>=2.6.2 <3]", override=True)
+        self.requires("libdeflate/1.22", override=True)
         self.requires("openjpeg/2.5.2", override=True)
 
     def build_requirements(self):
