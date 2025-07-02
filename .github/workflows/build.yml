@@ -22,6 +22,8 @@ jobs:
         toolset: 14
 
     - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: "~3.30.0"
 
     - name: Install Conan
       id: conan
@@ -32,7 +34,7 @@ jobs:
 
     - name: cache ~/.conan2
       id: cache-conan
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       env:
         cache-name: cache-conan-modules
       with:
