@@ -20,6 +20,9 @@ class MehRecipe(ConanFile):
         self.requires("boost/1.84.0", override=True)
         self.requires("libdeflate/1.22", override=True)
         self.requires("openjpeg/2.5.2", override=True)
+        self.requires("libtiff/4.7.1", override=True)
+        self.requires("libjpeg/9f", override=True)
+        self.requires("xz_utils/5.8.1", override=True)
 
     def build_requirements(self):
         self.tool_requires("cmake/3.29.0")
