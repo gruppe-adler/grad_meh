@@ -38,7 +38,7 @@ void populateMap() {
     gradMehMapIsPopulating = true;
     for (auto& p : getFullPboPaths()) {
         try {
-            auto pboReader = rvff::cxx::create_pbo_reader_path(p.string());
+            auto pboReader = arma_file_formats::cxx::create_pbo_reader_path(p.string());
             auto pbo = pboReader->get_pbo();
             for (auto& entry : pbo.entries) {
                 for (auto& prop : pbo.properties) {

@@ -89,11 +89,11 @@ void normalizePolygon(nl::json& arr)
     }
 }
 
-void writeHouses(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson, std::vector<rvff::cxx::LodCxx> modelInfos)
+void writeHouses(arma_file_formats::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson, std::vector<arma_file_formats::cxx::LodCxx> modelInfos)
 {
     nl::json house = nl::json::array();
 
-    std::map<uint32_t, rvff::cxx::ObjectCxx> objectMap = {};
+    std::map<uint32_t, arma_file_formats::cxx::ObjectCxx> objectMap = {};
     for (auto& object : wrp.objects) {
         objectMap.insert({ object.object_id, object });
     }
@@ -167,7 +167,7 @@ void writeHouses(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson
     }
 }
 
-void writeObjects(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson)
+void writeObjects(arma_file_formats::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson)
 {
     //nl::json house = nl::json::array();
     //for (auto& mapInfo : wrp.map_infos_4) {
@@ -194,10 +194,10 @@ void writeObjects(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojso
 static std::vector<uint8_t> esri_shape_magic = { 0, 0, 0x27, 0x0A };
 
 void writeRoads(
-    rvff::cxx::OprwCxx& wrp,
+    arma_file_formats::cxx::OprwCxx& wrp,
     const std::string& worldName,
     std::filesystem::path& basePathGeojson,
-    const std::map<std::string, std::vector<std::pair<rvff::cxx::ObjectCxx, rvff::cxx::LodCxx&>>>& mapObjects) {
+    const std::map<std::string, std::vector<std::pair<arma_file_formats::cxx::ObjectCxx, arma_file_formats::cxx::LodCxx&>>>& mapObjects) {
 
     auto basePathGeojsonTemp = basePathGeojson / "temp";
 
@@ -220,7 +220,7 @@ void writeRoads(
             fs::create_directories(basePathGeojsonRoads);
         }
 
-        auto roads_pbo = rvff::cxx::create_pbo_reader_path(findPboPath(roadsPath).string());
+        auto roads_pbo = arma_file_formats::cxx::create_pbo_reader_path(findPboPath(roadsPath).string());
 
         auto roadsPathDir = ((fs::path)roadsPath).remove_filename().string();
         if (boost::starts_with(roadsPathDir, "\\")) {
@@ -276,14 +276,14 @@ void writeRoads(
         auto dbase_path = (basePathGeojsonTemp / "roads.dbf").string();
 
         try {
-            if (rvff::cxx::check_for_magic_and_decompress_lzss_file(shape_path, esri_shape_magic)) {
+            if (arma_file_formats::cxx::check_for_magic_and_decompress_lzss_file(shape_path, esri_shape_magic)) {
                 PLOG_INFO << fmt::format("Decompressed LZSS compressed shape file ({})", shape_path);
             }
-            if (rvff::cxx::check_for_magic_and_decompress_lzss_file(index_path, esri_shape_magic)) {
+            if (arma_file_formats::cxx::check_for_magic_and_decompress_lzss_file(index_path, esri_shape_magic)) {
                 PLOG_INFO << fmt::format("Decompressed LZSS compressed index file ({})", index_path);
             }
             // Magic contains last update date (https://www.dbase.com/Knowledgebase/INT/db7_file_fmt.htm)
-            if (rvff::cxx::check_for_magic_and_decompress_lzss_file(dbase_path, { 0x03, 0x5F })) {
+            if (arma_file_formats::cxx::check_for_magic_and_decompress_lzss_file(dbase_path, { 0x03, 0x5F })) {
                 PLOG_INFO << fmt::format("Decompressed LZSS compressed dbase file ({})", dbase_path);
             }
         }
@@ -326,7 +326,7 @@ void writeRoads(
         std::map<uint32_t, std::pair<float_t, std::string>> roadWidthMap = {};
 
         try {
-            auto road_config = rvff::cxx::create_cfg_path((basePathGeojsonTemp / "roadslib.cfg").string());
+            auto road_config = arma_file_formats::cxx::create_cfg_path((basePathGeojsonTemp / "roadslib.cfg").string());
 
             auto entries = road_config->get_entry_as_entries(std::vector < std::string> { "RoadTypesLibrary" });
             for (auto& entry : entries)
@@ -396,11 +396,11 @@ void writeRoads(
                         (x_0,y_0) --- (x_3,y_3)
                     */
 
-                    rvff::cxx::XYZTripletCxx lb = {};
-                    rvff::cxx::XYZTripletCxx le = {};
-                    rvff::cxx::XYZTripletCxx pb = {};
-                    rvff::cxx::XYZTripletCxx pe = {};
-                    std::optional<rvff::cxx::XYZTripletCxx> map3Triplet = {};
+                    arma_file_formats::cxx::XYZTripletCxx lb = {};
+                    arma_file_formats::cxx::XYZTripletCxx le = {};
+                    arma_file_formats::cxx::XYZTripletCxx pb = {};
+                    arma_file_formats::cxx::XYZTripletCxx pe = {};
+                    std::optional<arma_file_formats::cxx::XYZTripletCxx> map3Triplet = {};
                     for (auto& namedSelection : road.second.named_selection) {
                         if (static_cast<std::string>(namedSelection.name) == "lb") {
                             lb = road.second.vertices[namedSelection.selected_vertices.edges[0]];
@@ -517,7 +517,7 @@ void writeRoads(
     fs::remove_all(basePathGeojsonTemp);
 }
 
-void writeSpecialIcons(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson, uint32_t id, const std::string& name) {
+void writeSpecialIcons(arma_file_formats::cxx::OprwCxx& wrp, fs::path& basePathGeojson, uint32_t id, const std::string& name) {
 
     auto treeLocations = nl::json();
     for (auto& mapInfo : wrp.map_infos_1) {
@@ -658,7 +658,7 @@ void writeRunways(fs::path& basePathGeojson, const std::string& worldName) {
     writeGZJson("runway.geojson.gz", basePathGeojson, runways);
 }
 
-void writeGenericMapTypes(fs::path& basePathGeojson, const std::vector<std::pair<rvff::cxx::ObjectCxx, rvff::cxx::LodCxx&>>& objectPairs, const std::string& name) {
+void writeGenericMapTypes(fs::path& basePathGeojson, const std::vector<std::pair<arma_file_formats::cxx::ObjectCxx, arma_file_formats::cxx::LodCxx&>>& objectPairs, const std::string& name) {
     if (objectPairs.size() == 0)
         return;
 
@@ -683,7 +683,7 @@ void writeGenericMapTypes(fs::path& basePathGeojson, const std::vector<std::pair
     writeGZJson((name + ".geojson.gz"), basePathGeojson, mapTypeLocation);
 }
 
-void writePowerlines(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson) {
+void writePowerlines(arma_file_formats::cxx::OprwCxx& wrp, fs::path& basePathGeojson) {
     nl::json powerline = nl::json::array();
 
     for (auto& mapInfo : wrp.map_infos_5) {
@@ -703,18 +703,18 @@ void writePowerlines(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson) {
         writeGZJson("powerline.geojson.gz", basePathGeojson, powerline);
 }
 
-void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<rvff::cxx::ObjectCxx, rvff::cxx::LodCxx&>>& objectPairs) {
+void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<arma_file_formats::cxx::ObjectCxx, arma_file_formats::cxx::LodCxx&>>& objectPairs) {
     if (objectPairs.size() == 0)
         return;
 
     nl::json railways = nl::json::array();
 
     for (auto& objectPair : objectPairs) {
-        rvff::cxx::XYZTripletCxx map1Triplet;
-        rvff::cxx::XYZTripletCxx map2Triplet;
-        std::optional<rvff::cxx::XYZTripletCxx> map3Triplet;
+        arma_file_formats::cxx::XYZTripletCxx map1Triplet;
+        arma_file_formats::cxx::XYZTripletCxx map2Triplet;
+        std::optional<arma_file_formats::cxx::XYZTripletCxx> map3Triplet;
         for (auto& namedSelection : objectPair.second.named_selection) {
-            rvff::cxx::XYZTripletCxx triplet = {};
+            arma_file_formats::cxx::XYZTripletCxx triplet = {};
             if (!namedSelection.vertex_indices.empty()) {
                 auto vertex_index = namedSelection.vertex_indices[0];
                 triplet = objectPair.second.vertices[vertex_index];
@@ -793,7 +793,7 @@ void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<rvff::
     writeGZJson("railway.geojson.gz", basePathGeojson, railways);
 }
 
-void writeRiver(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson) {
+void writeRiver(arma_file_formats::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson) {
 
     nl::json rivers;
 
@@ -826,7 +826,7 @@ void writeRiver(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson)
     }
 }
 
-void writeMounts(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson) {
+void writeMounts(arma_file_formats::cxx::OprwCxx& wrp, fs::path& basePathGeojson) {
 
     auto mounts = nl::json();
     for (auto& mount : wrp.mountains) {
@@ -852,9 +852,9 @@ void writeMounts(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson) {
     }
 }
 
-void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName)
+void writeGeojsons(arma_file_formats::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName)
 {
-    using namespace rvff::cxx;
+    using namespace arma_file_formats::cxx;
 
     std::vector<LodCxx> modelInfos;
     modelInfos.resize(wrp.models.size());
@@ -863,7 +863,7 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
     modelMapTypes.resize(wrp.models.size());
 
 
-    std::map<fs::path, rust::Box<rvff::cxx::PboReaderCxx>> pboMap;
+    std::map<fs::path, rust::Box<arma_file_formats::cxx::PboReaderCxx>> pboMap;
     for (int i = 0; i < wrp.models.size(); i++) {
         auto modelPath = static_cast<std::string>(wrp.models[i]);
         if (boost::starts_with(modelPath, "\\")) {
@@ -880,7 +880,7 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
             }
 
             if (pboMap.count(pboPath) < 1) {
-                pboMap.emplace(pboPath, std::move(rvff::cxx::create_pbo_reader_path(pboPath.string())));
+                pboMap.emplace(pboPath, std::move(arma_file_formats::cxx::create_pbo_reader_path(pboPath.string())));
             }
 
             int rvffIndex = -1;
@@ -902,19 +902,19 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
                 continue;
             }
 
-            auto odol_reader = rvff::cxx::create_odol_lazy_reader_vec(p3dData);
+            auto odol_reader = arma_file_formats::cxx::create_odol_lazy_reader_vec(p3dData);
             auto odol2 = odol_reader->get_odol();
 
-            rvff::cxx::LodCxx lod = {};
+            arma_file_formats::cxx::LodCxx lod = {};
 
             bool foundGeoLod = false;
             bool foundMemoryLod = false;
             for (auto& res : odol2.resolutions)
             {
-                if (res.res == rvff::cxx::ResolutionEnumCxx::Geometry) {
+                if (res.res == arma_file_formats::cxx::ResolutionEnumCxx::Geometry) {
                     foundGeoLod = true;
                 }
-                else if (res.res == rvff::cxx::ResolutionEnumCxx::Memory) {
+                else if (res.res == arma_file_formats::cxx::ResolutionEnumCxx::Memory) {
                     foundMemoryLod = true;
                 }
                 if (foundGeoLod && foundMemoryLod) {
@@ -924,7 +924,7 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
 
             if (foundGeoLod)
             {
-                lod = odol_reader->read_lod(rvff::cxx::ResolutionEnumCxx::Geometry);
+                lod = odol_reader->read_lod(arma_file_formats::cxx::ResolutionEnumCxx::Geometry);
                 rvffIndex = 1;
 
                 for (auto& prop : lod.named_properties) {
@@ -932,7 +932,7 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
                     {
                         auto val = static_cast<std::string>(prop.value);
                         if ((val == "railway" || val == "road" || val == "track" || val == "main road") && foundMemoryLod) {
-                            lod = odol_reader->read_lod(rvff::cxx::ResolutionEnumCxx::Memory);
+                            lod = odol_reader->read_lod(arma_file_formats::cxx::ResolutionEnumCxx::Memory);
                             rvffIndex = 2;
                         }
 
@@ -951,7 +951,7 @@ void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojs
     }
 
     // mapType, [object, lod]
-    std::map<std::string, std::vector<std::pair<rvff::cxx::ObjectCxx, LodCxx&>>> objectMap = {};
+    std::map<std::string, std::vector<std::pair<arma_file_formats::cxx::ObjectCxx, LodCxx&>>> objectMap = {};
 
     for (auto& object : wrp.objects) {
         auto mapType = modelMapTypes[object.model_index].first;

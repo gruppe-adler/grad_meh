@@ -25,5 +25,5 @@ struct CmpTileTransform
     }
 };
 
-void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::filesystem::path& basePathSat, const std::string& worldName);
-TileTransform getTileTransform(rust::Box<rvff::cxx::CfgCxx>& rap);
+void writeSatImages(arma_file_formats::cxx::OprwCxx& wrp, const int32_t& worldSize, std::filesystem::path& basePathSat, const std::string& worldName);
+TileTransform getTileTransform(rust::Box<arma_file_formats::cxx::CfgCxx>& rap);

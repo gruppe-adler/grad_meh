@@ -36,19 +36,19 @@ namespace fs = std::filesystem;
 namespace nl = nlohmann;
 
 void writeLocations(const std::string& worldName, std::filesystem::path& basePathGeojson);
-void writeHouses(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson);
-void writeObjects(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson);
-void writeRoads(rvff::cxx::OprwCxx& wrp, const std::string& worldName, std::filesystem::path& basePathGeojson,
-    const std::map<std::string, std::vector<std::pair<rvff::cxx::ObjectCxx, rvff::cxx::LodCxx&>>>& mapObjects);
-void writeSpecialIcons(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson, uint32_t id, const std::string& name);
+void writeHouses(arma_file_formats::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson);
+void writeObjects(arma_file_formats::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson);
+void writeRoads(arma_file_formats::cxx::OprwCxx& wrp, const std::string& worldName, std::filesystem::path& basePathGeojson,
+    const std::map<std::string, std::vector<std::pair<arma_file_formats::cxx::ObjectCxx, arma_file_formats::cxx::LodCxx&>>>& mapObjects);
+void writeSpecialIcons(arma_file_formats::cxx::OprwCxx& wrp, fs::path& basePathGeojson, uint32_t id, const std::string& name);
 float_t calculateDistance(types::auto_array<types::game_value> start, SimpleVector vector, SimpleVector point);
 float_t calculateMaxDistance(types::auto_array<types::game_value> ilsPos, types::auto_array<types::game_value> ilsDirection,
     types::auto_array<types::game_value> taxiIn, types::auto_array<types::game_value> taxiOff);
 nl::json buildRunwayPolygon(sqf::config_entry& runwayConfig);
 void writeRunways(fs::path& basePathGeojson, const std::string& worldName);
-void writeGenericMapTypes(fs::path& basePathGeojson, const std::vector<std::pair<rvff::cxx::ObjectCxx, rvff::cxx::LodCxx&>>& objectPairs, const std::string& name);
-void writePowerlines(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson);
-void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<rvff::cxx::ObjectCxx, rvff::cxx::LodCxx&>>& objectPairs);
-void writeGeojsons(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName);
-void writeRiver(rvff::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson);
-void writeMounts(rvff::cxx::OprwCxx& wrp, fs::path& basePathGeojson);
+void writeGenericMapTypes(fs::path& basePathGeojson, const std::vector<std::pair<arma_file_formats::cxx::ObjectCxx, arma_file_formats::cxx::LodCxx&>>& objectPairs, const std::string& name);
+void writePowerlines(arma_file_formats::cxx::OprwCxx& wrp, fs::path& basePathGeojson);
+void writeRailways(fs::path& basePathGeojson, const std::vector<std::pair<arma_file_formats::cxx::ObjectCxx, arma_file_formats::cxx::LodCxx&>>& objectPairs);
+void writeGeojsons(arma_file_formats::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson, const std::string& worldName);
+void writeRiver(arma_file_formats::cxx::OprwCxx& wrp, std::filesystem::path& basePathGeojson);
+void writeMounts(arma_file_formats::cxx::OprwCxx& wrp, fs::path& basePathGeojson);

@@ -90,8 +90,8 @@ FetchContent_MakeAvailable(Corrosion)
 
 # Import targets defined in a package or workspace manifest `Cargo.toml` file
 
-corrosion_import_crate(MANIFEST_PATH rvff-cxx/Cargo.toml)
-corrosion_add_cxxbridge(rust-lib CRATE rvff_cxx MANIFEST_PATH rvff-cxx FILES lib.rs)
+corrosion_import_crate(MANIFEST_PATH arma-file-formats-cxx/Cargo.toml)
+corrosion_add_cxxbridge(rust-lib CRATE arma_file_formats_cxx MANIFEST_PATH arma-file-formats-cxx FILES lib.rs)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_library(${INTERCEPT_PLUGIN_NAME} SHARED ${INTERCEPT_PLUGIN_SOURCES} ${INTERCEPT_HOST_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
@@ -118,7 +118,7 @@ endif()
 
 if(MSVC)
     # Note: This is required because we use `cxx` which uses `cc` to compile and link C++ code.
-	corrosion_set_env_vars(rvff_cxx "CFLAGS=-MD$<$<CONFIG:Debug>:d>" "CXXFLAGS=-MD$<$<CONFIG:Debug>:d>")
+	corrosion_set_env_vars(arma_file_formats_cxx "CFLAGS=-MD$<$<CONFIG:Debug>:d>" "CXXFLAGS=-MD$<$<CONFIG:Debug>:d>")
 endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${INTERCEPT_INCLUDE_PATH})
