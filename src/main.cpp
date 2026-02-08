@@ -113,7 +113,7 @@ void writeMeta(const std::string &worldName, const int32_t &worldSize, fs::path 
     out.close();
 }
 
-void writeDem(fs::path &basePath, rvff::cxx::OprwCxx &wrp, const int32_t &worldSize)
+void writeDem(fs::path &basePath, arma_file_formats::cxx::OprwCxx &wrp, const int32_t &worldSize)
 {
     auto cellsize = (float_t)worldSize / wrp.map_size_x;
 
@@ -164,9 +164,9 @@ void writePreviewImage(const std::string &worldName, std::filesystem::path &base
         return;
     }
     try {
-        auto previewPbo = rvff::cxx::create_pbo_reader_path(pboPath.string());
+        auto previewPbo = arma_file_formats::cxx::create_pbo_reader_path(pboPath.string());
         auto previewData = previewPbo->get_entry_data(picturePath);
-        auto previewMipmap = rvff::cxx::get_mipmap_from_paa_vec(previewData, 0);
+        auto previewMipmap = arma_file_formats::cxx::get_mipmap_from_paa_vec(previewData, 0);
 
         auto previewFileName = (basePath / "preview.png").string();
 
@@ -229,17 +229,17 @@ void extractMap(const std::string &worldName, const std::string &worldPath, std:
         // Find Wrp Path
         auto wrpPath = findPboPath(worldPath);
         curWorldPath = wrpPath.string();
-        auto wrpPboReader = rvff::cxx::create_pbo_reader_path(wrpPath.string());
+        auto wrpPboReader = arma_file_formats::cxx::create_pbo_reader_path(wrpPath.string());
 
         auto wrp_data = wrpPboReader->get_entry_data(worldPath);
 
-        auto wrp = rvff::cxx::OprwCxx{};
+        auto wrp = arma_file_formats::cxx::OprwCxx{};
         // wrp.wrpName = worldName + ".wrp";
 
         if (steps[0] || steps[1] || steps[3] || steps[4])
         {
             reportStatus(worldName, "read_wrp", "running");
-            wrp = rvff::cxx::create_wrp_from_vec(wrp_data);
+            wrp = arma_file_formats::cxx::create_wrp_from_vec(wrp_data);
             reportStatus(worldName, "read_wrp", "done");
         }
         else
@@ -386,7 +386,7 @@ game_value exportMapCommand(game_state &gs, SQFPar rightArg)
     {
         try
         {
-            auto wrpPboReader = rvff::cxx::create_pbo_reader_path(wrpPboPath.string());
+            auto wrpPboReader = arma_file_formats::cxx::create_pbo_reader_path(wrpPboPath.string());
             if (!wrpPboReader->has_entry(worldPath))
                 return GRAD_MEH_STATUS_ERR_PBO_NOT_FOUND;
         }

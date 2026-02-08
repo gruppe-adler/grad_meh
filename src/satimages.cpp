@@ -15,19 +15,19 @@ using namespace OpenImageIO_v2_5;
 struct SatMapTile {
     fs::path path = {};
     TileTransform tt = {};
-    rvff::cxx::MipmapCxx mipmap = {};
+    arma_file_formats::cxx::MipmapCxx mipmap = {};
 };
 
 struct FillerMapTile {
     fs::path path = {};
     std::set<TileTransform, CmpTileTransform> tt = {};
-    rvff::cxx::MipmapCxx mipmap = {};
+    arma_file_formats::cxx::MipmapCxx mipmap = {};
 };
 
 static const std::vector<std::string> texture_config_path    { "Stage0", "texture" };
 static const std::vector<std::string> texgen_config_path     { "Stage0", "texGen" };
 
-void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::filesystem::path& basePathSat, const std::string& worldName)
+void writeSatImages(arma_file_formats::cxx::OprwCxx& wrp, const int32_t& worldSize, std::filesystem::path& basePathSat, const std::string& worldName)
 {
     std::vector<std::string> rvmats = {};
     for (auto& rv : wrp.texures) {
@@ -45,7 +45,7 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
         std::string pboPath = "";
         try {
             pboPath = findPboPath(rvmats[0]).string();
-            auto rvmatPbo = rvff::cxx::create_pbo_reader_path(pboPath);
+            auto rvmatPbo = arma_file_formats::cxx::create_pbo_reader_path(pboPath);
 
             // Has to be not empty
             std::string lastValidRvMat = "1337";
@@ -53,7 +53,7 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
             std::optional<TileTransform> firstPos = std::nullopt;
             std::string prefix = "s_";
 
-            std::optional<rust::box<rvff::cxx::PboReaderCxx>> pbo = std::nullopt;
+            std::optional<rust::box<arma_file_formats::cxx::PboReaderCxx>> pbo = std::nullopt;
 
             for (auto& rvmatPath : rvmats) {
                 if (!boost::istarts_with(((fs::path)rvmatPath).filename().string(), lastValidRvMat)) {
@@ -63,7 +63,7 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
                         PLOG_ERROR << "Rvmat data was empty!";
                     }
                     PLOG_INFO << fmt::format("Parsing rvmat {}", rvmatPath);
-                    auto rap = rvff::cxx::create_cfg_vec(rap_data);
+                    auto rap = arma_file_formats::cxx::create_cfg_vec(rap_data);
                     auto textureStr = static_cast<std::string>(rap->get_entry_as_string(texture_config_path));
 
                     // Fix wrong file extensions (cup summer has png extension)
@@ -84,26 +84,26 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
                             }
 
                             if (!pbo.has_value()) {
-                                pbo = rvff::cxx::create_pbo_reader_path(findPboPath(textureStr).string());
+                                pbo = arma_file_formats::cxx::create_pbo_reader_path(findPboPath(textureStr).string());
                             }
 
                             auto data = (*pbo)->get_entry_data(textureStr);
 
                             if (data.empty()) {
-                                pbo = rvff::cxx::create_pbo_reader_path(findPboPath(textureStr).string());
+                                pbo = arma_file_formats::cxx::create_pbo_reader_path(findPboPath(textureStr).string());
                                 data = (*pbo)->get_entry_data(textureStr);
                             }
 
-                            auto mipmap = rvff::cxx::get_mipmap_from_paa_vec(data, 0);
+                            auto mipmap = arma_file_formats::cxx::get_mipmap_from_paa_vec(data, 0);
 
                             struct SatMapTile tile = { textureStr, tt, std::move(mipmap) };
                             satMapTiles.push_back(std::move(tile));
                         }
                         else {
                             if(!fillerTile.has_value()) {
-                                auto fillerPbo = rvff::cxx::create_pbo_reader_path(findPboPath(textureStr).string());
+                                auto fillerPbo = arma_file_formats::cxx::create_pbo_reader_path(findPboPath(textureStr).string());
                                 auto fillerData = fillerPbo->get_entry_data(textureStr);
-                                auto filler_mm = rvff::cxx::get_mipmap_from_paa_vec(fillerData, 0);
+                                auto filler_mm = arma_file_formats::cxx::get_mipmap_from_paa_vec(fillerData, 0);
 
                                 struct FillerMapTile tile = { textureStr, {}, filler_mm };
                                 fillerTile = tile;
@@ -301,7 +301,7 @@ void writeSatImages(rvff::cxx::OprwCxx& wrp, const int32_t& worldSize, std::file
     }
 }
 
-TileTransform getTileTransform(rust::Box<rvff::cxx::CfgCxx>& rap) {
+TileTransform getTileTransform(rust::Box<arma_file_formats::cxx::CfgCxx>& rap) {
     auto texGenValue = rap->get_entry_as_number(texgen_config_path);
 
     auto tex_gen_class = fmt::format("TexGen{}", texGenValue);
