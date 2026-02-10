@@ -463,12 +463,19 @@ void writeRoads(
             }
 
             int32_t jId = propId;// feature["properties"]["ID"];
-            feature["properties"].clear();
-            feature["properties"]["width"] = roadWidthMap[jId].first;
 
-            auto kvp = roadMap.find(roadWidthMap[jId].second);
+            auto roadIt = roadWidthMap.find(jId);
+            if (roadIt == roadWidthMap.end() || roadIt->second.second.empty()) {
+                PLOG_WARNING << fmt::format("Skipping road feature with unknown or empty road type (ID {})", jId);
+                continue;
+            }
+
+            feature["properties"].clear();
+            feature["properties"]["width"] = roadIt->second.first;
+
+            auto kvp = roadMap.find(roadIt->second.second);
             if (kvp == roadMap.end()) {
-                kvp = roadMap.insert({ roadWidthMap[jId].second, nl::json() }).first;
+                kvp = roadMap.insert({ roadIt->second.second, nl::json() }).first;
             }
             kvp->second.push_back(feature);
         }
