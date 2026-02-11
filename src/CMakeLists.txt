@@ -114,6 +114,10 @@ target_link_libraries(${INTERCEPT_PLUGIN_NAME} rust-lib)
 
 if(MSVC)
 	target_link_libraries(${INTERCEPT_PLUGIN_NAME} ntdll.lib)
+
+	# Required for a debug build since these will be optimized away in relase mode,
+	# since they are only required for edds (crate: 'block_compression')
+	target_link_libraries(${INTERCEPT_PLUGIN_NAME} $<$<CONFIG:Debug>:propsys.lib> $<$<CONFIG:Debug>:opengl32.lib>)
 endif()
 
 if(MSVC)
