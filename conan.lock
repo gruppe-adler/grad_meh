@@ -1,0 +1,139 @@
+{
+    "version": "0.5",
+    "requires": [
+        "zstd/1.5.5#a4398ab5244b10fb081eeac217b5ef9f%1760955096.505",
+        "zlib/1.3.1#cac0f6daea041b0ccf42934163defb20%1765284699.337",
+        "yaml-cpp/0.8.0#131511e225a521dd94fd8b2ee2268ab2%1751505982.977",
+        "xz_utils/5.8.1#0c67d0683aca2f1ca69a17730a65a1e7%1764347087.521",
+        "vorbis/1.3.7#a019e93187ade6ee8a51762f88092604%1743676138.386",
+        "tsl-robin-map/1.2.1#760934a48af36aaa43a1366f1dc34bd3%1753346726.696",
+        "sqlite3/3.51.0#66aa11eabd0e34954c5c1c061ad44abe%1763899256.358",
+        "qhull/8.0.2#7f8feda445c3a0929a12a571ff049177%1766510792.899",
+        "pystring/1.1.4#ca23c56b96bc4310ae2b3d7e215bf9a3%1741858833.459",
+        "pugixml/1.14#c6afdcf73d71858303d8260b0d76ff91%1696206310.014",
+        "ptex/2.4.2#ba6a60f9dabd40f83df6dafa24e014e9%1703960018.592",
+        "proj/9.3.1#dfef73b8a72d2f6cccefd65cacdcf7a6%1764707554.857",
+        "plog/1.1.10#a8c0827ed986b6e410623a489ae936cf%1695252367.66",
+        "pcl/1.13.1#db4e95b57dce55a901565aeb9300b9e3%1761285209.792",
+        "opus/1.4#d87c608b1df136de943b02656e166c4e%1746796769.145",
+        "openssl/3.6.1#2e0be4a996c7ca91feb31b7fe65117b9%1769599203.736",
+        "openjpeg/2.5.2#6f7b733e151d1bbf5ed05cbabb846828%1709653017.024",
+        "openimageio/2.5.9.0#78a3af1e0570976f428a1fe8b7fd58c8%1717320922.969",
+        "openh264/2.4.1#e7b055ba4fc635a6a3e0dbec088e18ea%1732788772.808",
+        "openexr/3.2.3#9729562cfe706ed8d5a9a7f398d09eab%1727884743.243",
+        "opencolorio/2.3.1#8fe71471212052f27012cef2f3236c51%1731186779.135",
+        "opencl-icd-loader/2023.12.14#ee6847871a6d5be2ca1f0883fe7f0cfa%1743522843.033",
+        "opencl-headers/2023.12.14#c0238f7f78651c2977a85baeaf451757%1704765802.211",
+        "opencl-clhpp-headers/2023.12.14#e04114f0851df1a5db0ccc9f51de70b9%1705132388.974",
+        "ogg/1.3.5#e8186fe05ebe9f8e706fa4bde2164d12%1743515256.147",
+        "nlohmann_json/3.11.3#45828be26eb619a2e04ca517bb7b828d%1701220705.259",
+        "minizip-ng/4.0.3#66306f869f00112109c2d1f6be226900%1733406330.864",
+        "lz4/1.9.4#4ed63aa8e019d795cd3b8c0d2dd66cda%1743433190.812",
+        "libx265/3.4#d92862056e216025fc154565baab7cb9%1753866095.417",
+        "libx264/cci.20240224#a037063ce0a3e5a2f75b9c1b56038aed%1739359620.16",
+        "libwebp/1.3.2#48800423705f4739ed8e3eba9bb4e2db%1754386373.669",
+        "libvpx/1.14.1#18d555b919f7824741bf2f9422f09a36%1753197627.396",
+        "libusb/1.0.26#460e9b0848bf0a2cf80214116d717dc0%1752159859.765",
+        "libtiff/4.7.1#0ab2d15639faa1c301ccfb271fc0b55f%1759735981.08",
+        "libsvtav1/2.1.0#3afefba35b1b1218a700c4699f0c84b2%1739359600.393",
+        "libsquish/1.15#7f943e7d0ee7fc638d554d7a470a5f6c%1707142005.713",
+        "libpng/1.6.43#47094e8522b0f0744acfc731eadf308d%1726517434.385",
+        "libpcap/1.10.4#e6a74a9a701ee4673c5be9b083b2f38c%1750157239.555",
+        "libmp3lame/3.100#44b12d19316eb2b223d98d3e75dae438%1674992501.853",
+        "libjpeg/9f#8edfe2699565c80c825d0256002504ff%1723665907.087",
+        "libiconv/1.17#1e65319e945f2d31941a9d28cc13c058%1751451666.321",
+        "libheif/1.16.2#4d3d3a2c6c06bd5a5bdce50d8f510e98%1753866109.624",
+        "libgeotiff/1.7.1#94cf0d7b12e8876c6590548445f02d6d%1764743729.355",
+        "libfdk_aac/2.0.3#0115f6598be7303e042684e3a846b12d%1720774838.081",
+        "libdeflate/1.22#f95aebe763153ccbc4cc76c023e42e5a%1728201690.347",
+        "libde265/1.0.15#487f0a141295cf2c5ce2436e0ea82174%1758206202.717",
+        "libcurl/8.17.0#5f7b5b769dc3468ce693048cd8d7dd64%1764325761.224",
+        "libaom-av1/3.6.1#a2b22c70d6fce43887881431808ab8a6%1722584909.89",
+        "lerc/4.0.1#b6290d4c711eccdfbeb9b5aa5ddc9acc%1700048364.07",
+        "lcms/2.16#803222ca149d2e07e9c0ab32342e47e6%1753689779.344",
+        "json-c/0.17#09a1d55c1502f3ddbe15e89020b41f6e%1743412208.67",
+        "imath/3.1.9#de0e0ed8cc212ca0985a9cd311077931%1756476364.85",
+        "hdf5/1.14.3#991e957e2b01e95535d5a217b4e81247%1769103007.969",
+        "giflib/5.2.1#b2e383cdaf6dbd727ebfa15c66ea38b3%1731663930.381",
+        "getopt-for-visual-studio/20200201#32ee360e2552fe65ad8bec52edcd64fd%1678877536.186",
+        "geos/3.12.0#ee6169d069f50787e91e289ce18b6b1a%1726390160.785",
+        "gdal/3.8.3#5b6d25e91d7586280eabc1ab279dc85e%1767716845.516",
+        "freetype/2.13.2#18656f7a6d52256a930f1cbd79f1509d%1756828316.696",
+        "fmt/10.2.1#658771bb858b77f380be2ebb22c338e9%1735899167.615",
+        "flann/1.9.2#bec67c7637ce104bf443871f441c87ae%1743154318.628",
+        "ffmpeg/6.1#cc92a8394166625c1a03a21fd288c688%1747730858.933",
+        "expat/2.7.4#55569edc34682009fd6f2e6a558ffed9%1770155753.962",
+        "eigen/3.4.1#596b5f9599915bc0de4e7dd7fca20380%1761650594.516",
+        "dav1d/1.4.3#5e2459e132c77183bd16d23d12fd8f4a%1720718852.932",
+        "cpuinfo/cci.20231129#a37a897c937c259e59536c042aacda22%1765382272.183",
+        "clipper2/1.3.0#233b2987676cece4a977ca06862d8b83%1722931769.552",
+        "bzip2/1.0.8#c470882369c2d95c5c77e970c0c7e321%1762886692.465",
+        "brotli/1.1.0#3f631ef77008f7b5eb388780116371a3%1764862343.045",
+        "boost/1.84.0#2685bfd45de3c958f9071635ab78189e%1765955107.97"
+    ],
+    "build_requires": [
+        "yasm/1.3.0#c0bc84844465e1cd7850c820ad5b09b6%1752493247.057",
+        "winflexbison/2.5.25#f5f4bc7cad4eee391337d650c77decb6%1743676676.173",
+        "strawberryperl/5.32.1.1#8d114504d172cfea8ea1662d09b6333e%1751971032.423",
+        "sqlite3/3.51.0#66aa11eabd0e34954c5c1c061ad44abe%1763899256.358",
+        "pkgconf/2.5.1#93c2051284cba1279494a43a4fcfeae2%1757684701.089",
+        "pkgconf/2.1.0#21f96520faf7660b99f872e956d2ac13%1755505630.82",
+        "ninja/1.13.2#c8c5dc2a52ed6e4e42a66d75b4717ceb%1764096931.974",
+        "nasm/2.16.01#31e26f2ee3c4346ecd347911bd126904%1745483323.489",
+        "nasm/2.15.05#f7d6a6f3b14f583e001d9ae84e8cd152%1745483325.985",
+        "msys2/cci.latest#eea83308ad7e9023f7318c60d5a9e6cb%1770199879.083",
+        "meson/1.10.0#60786758ea978964c24525de19603cf4%1768294926.103",
+        "meson/1.4.1#43b753adf9a089cadfa17c8034f5c897%1726730117.486",
+        "meson/1.4.0#2262941cc8fbb0099dd0c196ca2a6c01%1726730116.631",
+        "cmake/4.2.3#c5c10d4c90874997553970589940ab9c%1769792867.095",
+        "cmake/3.31.11#f325c933f618a1fcebc1e1c0babfd1ba%1769622857.944",
+        "cmake/3.29.0#a055de871f63a7904aa3dcb9f3c61242%1711499794.04",
+        "b2/5.4.2#ffd6084a119587e70f11cd45d1a386e2%1766594659.866"
+    ],
+    "python_requires": [],
+    "overrides": {
+        "boost/1.83.0": [
+            "boost/1.84.0"
+        ],
+        "libpng/[>=1.6 <2]": [
+            "libpng/1.6.43"
+        ],
+        "libtiff/[>=4.6.0 <5]": [
+            "libtiff/4.7.1#0ab2d15639faa1c301ccfb271fc0b55f"
+        ],
+        "libjpeg/[>=9e]": [
+            "libjpeg/9f"
+        ],
+        "libdeflate/[>=1.19 <=1.22]": [
+            "libdeflate/1.22"
+        ],
+        "xz_utils/[>=5.4.5 <6]": [
+            "xz_utils/5.8.1"
+        ],
+        "boost/1.84.0": [
+            "boost/1.84.0"
+        ],
+        "libtiff/4.6.0": [
+            "libtiff/4.7.1"
+        ],
+        "libjpeg/9e": [
+            "libjpeg/9f"
+        ],
+        "libpng/1.6.42": [
+            "libpng/1.6.43#47094e8522b0f0744acfc731eadf308d"
+        ],
+        "openjpeg/2.5.0": [
+            "openjpeg/2.5.2"
+        ],
+        "libdeflate/1.19": [
+            "libdeflate/1.22"
+        ],
+        "xz_utils/5.4.5": [
+            "xz_utils/5.8.1"
+        ],
+        "openjpeg/2.5.2": [
+            "openjpeg/2.5.2"
+        ]
+    },
+    "config_requires": []
+}
