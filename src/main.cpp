@@ -144,7 +144,7 @@ void writeDem(fs::path &basePath, arma_file_formats::cxx::OprwCxx &wrp, const in
     demOut.close();
 }
 
-void writePreviewImage(const std::string &worldName, std::filesystem::path &basePath)
+bool writePreviewImage(const std::string &worldName, std::filesystem::path &basePath)
 {
     client::invoker_lock threadLock;
     auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
@@ -152,7 +152,7 @@ void writePreviewImage(const std::string &worldName, std::filesystem::path &base
     threadLock.unlock();
 
     if (picturePath.empty()) {
-        return;
+        return true;
     }
 
     if (boost::starts_with(picturePath, "\\")) {
@@ -161,7 +161,7 @@ void writePreviewImage(const std::string &worldName, std::filesystem::path &base
 
     auto pboPath = findPboPath(picturePath);
     if (pboPath.empty()) {
-        return;
+        return true;
     }
     try {
         auto previewPbo = arma_file_formats::cxx::create_pbo_reader_path(pboPath.string());
@@ -172,16 +172,30 @@ void writePreviewImage(const std::string &worldName, std::filesystem::path &base
 
         std::unique_ptr<ImageOutput> out = ImageOutput::create(previewFileName);
         if (!out)
-            return;
+            return false;
         ImageSpec spec(previewMipmap.width, previewMipmap.height, 4, TypeDesc::UINT8);
         out->open(previewFileName, spec);
         out->write_image(TypeDesc::UINT8, previewMipmap.data.data());
         out->close();
+        return true;
     }
     catch (const rust::Error& ex) {
-        PLOG_ERROR << fmt::format("Exception in writePreviewImage PBO: {} Picture Path: {}", pboPath.string(), picturePath);
-        PLOG_ERROR << ex.what();
-        throw;
+        auto msg = fmt::format("Failed to write preview image ({}): {}", picturePath, ex.what());
+        PLOG_ERROR << msg;
+        prettyDiagLog(msg);
+        return false;
+    }
+    catch (const std::exception& ex) {
+        auto msg = fmt::format("Failed to write preview image ({}): {}", picturePath, ex.what());
+        PLOG_ERROR << msg;
+        prettyDiagLog(msg);
+        return false;
+    }
+    catch (...) {
+        auto msg = fmt::format("Failed to write preview image ({}): unknown error", picturePath);
+        PLOG_ERROR << msg;
+        prettyDiagLog(msg);
+        return false;
     }
 }
 
@@ -268,8 +282,11 @@ void extractMap(const std::string &worldName, const std::string &worldPath, std:
         {
             reportStatus(worldName, "write_preview", "running");
             prettyDiagLog("Exporting preview image");
-            writePreviewImage(worldName, basePath);
-            reportStatus(worldName, "write_preview", "done");
+            if (writePreviewImage(worldName, basePath)) {
+                reportStatus(worldName, "write_preview", "done");
+            } else {
+                reportStatus(worldName, "write_preview", "canceled");
+            }
         }
 
         if (steps[3])
