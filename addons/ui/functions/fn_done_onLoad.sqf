@@ -5,6 +5,13 @@ params ["_display"];
 
 private _parentGrp = _display displayCtrl IDC_DIALOG_CONTENT;
 private _errors = uiNamespace getVariable ["grad_meh_errors", []];
+private _progress = uiNamespace getVariable ["grad_meh_progress", []];
+private _canceledCount = 0;
+{
+	(_x select 1) params ["_running", "_done", "_canceled"];
+	_canceledCount = _canceledCount + count _canceled;
+} forEach _progress;
+private _totalErrors = count _errors + _canceledCount;
 private _yPos = 0;
 
 private _textCtrl = (_display displayCtrl IDC_DONE_TEXT);
@@ -14,7 +21,7 @@ if !(isNull _textCtrl) then {
 	_yPos = (SPACING * GRID_H) + (_textPos select 1) + (_textPos select 3);
 
 	// update text
-	private _errorColor = ["#FFFFFF", "#8F1167"] select (count _errors > 0);
+	private _errorColor = ["#FFFFFF", "#8F1167"] select (_totalErrors > 0);
 
 	_textCtrl ctrlSetStructuredText parseText format [
 		"
@@ -23,7 +30,7 @@ if !(isNull _textCtrl) then {
 <t color='%1' size='1.2'>with %2 errors</t><br />
 <br /><br /><t size='1.2' color='#AAAAAA' v-align='bottom'>%3 LOGS %3</t>
 		"
-	, _errorColor, count _errors, LOGS_ARROW];
+	, _errorColor, _totalErrors, LOGS_ARROW];
 };
 
 {
