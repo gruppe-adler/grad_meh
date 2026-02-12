@@ -166,17 +166,61 @@ bool writePreviewImage(const std::string &worldName, std::filesystem::path &base
     try {
         auto previewPbo = arma_file_formats::cxx::create_pbo_reader_path(pboPath.string());
         auto previewData = previewPbo->get_entry_data(picturePath);
-        auto previewMipmap = arma_file_formats::cxx::get_mipmap_from_paa_vec(previewData, 0);
-
         auto previewFileName = (basePath / "preview.png").string();
 
-        std::unique_ptr<ImageOutput> out = ImageOutput::create(previewFileName);
-        if (!out)
-            return false;
-        ImageSpec spec(previewMipmap.width, previewMipmap.height, 4, TypeDesc::UINT8);
-        out->open(previewFileName, spec);
-        out->write_image(TypeDesc::UINT8, previewMipmap.data.data());
-        out->close();
+        auto ext = fs::path(picturePath).extension().string();
+        boost::algorithm::to_lower(ext);
+
+        if (ext == ".paa") {
+            auto previewMipmap = arma_file_formats::cxx::get_mipmap_from_paa_vec(previewData, 0);
+
+            std::unique_ptr<ImageOutput> out = ImageOutput::create(previewFileName);
+            if (!out)
+                return false;
+            ImageSpec spec(previewMipmap.width, previewMipmap.height, 4, TypeDesc::UINT8);
+            out->open(previewFileName, spec);
+            out->write_image(TypeDesc::UINT8, previewMipmap.data.data());
+            out->close();
+        } else {
+            auto tempPath = basePath / ("preview_src" + ext);
+            std::ofstream tempFile(tempPath, std::ios::binary);
+            tempFile.write(reinterpret_cast<const char*>(previewData.data()), previewData.size());
+            tempFile.close();
+
+            auto inImg = ImageInput::open(tempPath.string());
+            if (!inImg) {
+                fs::remove(tempPath);
+                return false;
+            }
+            const ImageSpec& inSpec = inImg->spec();
+            int nch = inSpec.nchannels;
+            int w = inSpec.width;
+            int h = inSpec.height;
+
+            std::vector<uint8_t> px(w * h * nch);
+            inImg->read_image(0, 0, 0, nch, TypeDesc::UINT8, px.data());
+            inImg->close();
+
+            std::vector<uint8_t> rgba(w * h * 4);
+            for (int i = 0; i < w * h; i++) {
+                rgba[i*4+0] = px[i*nch+0];
+                rgba[i*4+1] = nch > 1 ? px[i*nch+1] : px[i*nch+0];
+                rgba[i*4+2] = nch > 2 ? px[i*nch+2] : px[i*nch+0];
+                rgba[i*4+3] = nch > 3 ? px[i*nch+3] : 255;
+            }
+
+            std::unique_ptr<ImageOutput> out = ImageOutput::create(previewFileName);
+            if (!out) {
+                fs::remove(tempPath);
+                return false;
+            }
+            ImageSpec outSpec(w, h, 4, TypeDesc::UINT8);
+            out->open(previewFileName, outSpec);
+            out->write_image(TypeDesc::UINT8, rgba.data());
+            out->close();
+
+            fs::remove(tempPath);
+        }
         return true;
     }
     catch (const rust::Error& ex) {
