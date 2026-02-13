@@ -7,6 +7,7 @@
 #include "version.h"
 
 #include <OpenImageIO/imageio.h>
+#include <OpenImageIO/filesystem.h>
 
 // String
 #include <boost/algorithm/string/replace.hpp>
@@ -148,95 +149,81 @@ bool writePreviewImage(const std::string &worldName, std::filesystem::path &base
 {
     client::invoker_lock threadLock;
     auto mapConfig = sqf::config_entry(sqf::config_file()) >> "CfgWorlds" >> worldName;
-    std::string picturePath = sqf::get_text(mapConfig >> "pictureMap");
+    std::string configPicturePath = sqf::get_text(mapConfig >> "pictureMap");
     threadLock.unlock();
 
-    if (picturePath.empty()) {
+    if (configPicturePath.empty()) {
         return true;
     }
 
-    if (boost::starts_with(picturePath, "\\")) {
-        picturePath = picturePath.substr(1);
+    if (boost::starts_with(configPicturePath, "\\")) {
+        configPicturePath = configPicturePath.substr(1);
     }
 
-    auto pboPath = findPboPath(picturePath);
+    auto pboPath = findPboPath(configPicturePath);
     if (pboPath.empty()) {
         return true;
     }
     try {
         auto previewPbo = arma_file_formats::cxx::create_pbo_reader_path(pboPath.string());
-        auto previewData = previewPbo->get_entry_data(picturePath);
+        auto previewData = previewPbo->get_entry_data(configPicturePath);
         auto previewFileName = (basePath / "preview.png").string();
 
-        auto ext = fs::path(picturePath).extension().string();
+        auto picturePath = fs::path(configPicturePath);
+        auto ext = picturePath.extension().string();
         boost::algorithm::to_lower(ext);
+
+        std::unique_ptr<ImageOutput> out = ImageOutput::create(previewFileName);
+        if (!out) {
+            auto msg = fmt::format("Could not create preview picture: {}", previewFileName);
+            PLOG_ERROR << msg;
+            prettyDiagLog(msg);
+            return false;
+        }
 
         if (ext == ".paa") {
             auto previewMipmap = arma_file_formats::cxx::get_mipmap_from_paa_vec(previewData, 0);
 
-            std::unique_ptr<ImageOutput> out = ImageOutput::create(previewFileName);
-            if (!out)
-                return false;
             ImageSpec spec(previewMipmap.width, previewMipmap.height, 4, TypeDesc::UINT8);
             out->open(previewFileName, spec);
             out->write_image(TypeDesc::UINT8, previewMipmap.data.data());
-            out->close();
         } else {
-            auto tempPath = basePath / ("preview_src" + ext);
-            std::ofstream tempFile(tempPath, std::ios::binary);
-            tempFile.write(reinterpret_cast<const char*>(previewData.data()), previewData.size());
-            tempFile.close();
-
-            auto inImg = ImageInput::open(tempPath.string());
-            if (!inImg) {
-                fs::remove(tempPath);
+			Filesystem::IOMemReader ioMemReader(previewData.data(), previewData.size());
+            auto img = ImageInput::open(picturePath.filename().string(), nullptr, &ioMemReader);
+            if (!img) {
+                auto msg = fmt::format("Could not open non paa preview picture: {}", configPicturePath);
+                PLOG_ERROR << msg;
+                prettyDiagLog(msg);
                 return false;
             }
-            const ImageSpec& inSpec = inImg->spec();
-            int nch = inSpec.nchannels;
-            int w = inSpec.width;
-            int h = inSpec.height;
 
-            std::vector<uint8_t> px(w * h * nch);
-            inImg->read_image(0, 0, 0, nch, TypeDesc::UINT8, px.data());
-            inImg->close();
+            ImageSpec imgBufSpec = img->spec();
 
-            std::vector<uint8_t> rgba(w * h * 4);
-            for (int i = 0; i < w * h; i++) {
-                rgba[i*4+0] = px[i*nch+0];
-                rgba[i*4+1] = nch > 1 ? px[i*nch+1] : px[i*nch+0];
-                rgba[i*4+2] = nch > 2 ? px[i*nch+2] : px[i*nch+0];
-                rgba[i*4+3] = nch > 3 ? px[i*nch+3] : 255;
-            }
+            std::vector<uint8_t> pixels(imgBufSpec.width * imgBufSpec.height * imgBufSpec.nchannels);
+            img->read_image(TypeDesc::UINT8, pixels.data());
+            img->close();
 
-            std::unique_ptr<ImageOutput> out = ImageOutput::create(previewFileName);
-            if (!out) {
-                fs::remove(tempPath);
-                return false;
-            }
-            ImageSpec outSpec(w, h, 4, TypeDesc::UINT8);
-            out->open(previewFileName, outSpec);
-            out->write_image(TypeDesc::UINT8, rgba.data());
-            out->close();
-
-            fs::remove(tempPath);
+            ImageSpec spec(imgBufSpec.width, imgBufSpec.height, imgBufSpec.nchannels, TypeDesc::UINT8);
+            out->open(previewFileName, spec);
+            out->write_image(TypeDesc::UINT8, pixels.data());
         }
+        out->close();
         return true;
     }
     catch (const rust::Error& ex) {
-        auto msg = fmt::format("Failed to write preview image ({}): {}", picturePath, ex.what());
+        auto msg = fmt::format("Failed to write preview image ({}): {}", configPicturePath, ex.what());
         PLOG_ERROR << msg;
         prettyDiagLog(msg);
         return false;
     }
     catch (const std::exception& ex) {
-        auto msg = fmt::format("Failed to write preview image ({}): {}", picturePath, ex.what());
+        auto msg = fmt::format("Failed to write preview image ({}): {}", configPicturePath, ex.what());
         PLOG_ERROR << msg;
         prettyDiagLog(msg);
         return false;
     }
     catch (...) {
-        auto msg = fmt::format("Failed to write preview image ({}): unknown error", picturePath);
+        auto msg = fmt::format("Failed to write preview image ({}): unknown error", configPicturePath);
         PLOG_ERROR << msg;
         prettyDiagLog(msg);
         return false;
